@@ -8,12 +8,10 @@ from dotenv import load_dotenv
 from ddgs import DDGS
 load_dotenv()
 
-gemini_key = os.getenv('GEMINI_KEY')
-serp_key = os.getenv('SERVAPI_KEY')
+# gemini_key = os.getenv('GEMINI_KEY')
 file_name = os.getenv('FILE_NAME')
 
-client = genai.Client(api_key=gemini_key)
-webscraper = serpapi.Client(api_key=serp_key)
+# client = genai.Client(api_key=gemini_key)
 
 def orderganizeData(reorderedList,rawData):
     finalUpdatedList = []
@@ -77,24 +75,51 @@ keywords = input("Enter what words you wanna have followed by comma: ")
 keywords = keywords.split(",")
 print(keywords)
 mainList = []
+
+page = input("Enter what page you want to start, followed by a comma, what page you want to end: ").split(",")
+while len(page) != 2 or int(page[0]) <= 0 or int(page[1]) <= 0:
+    print("Try Again, incorrect values or format")
+    page = input("Enter what page you want to start, followed by a comma, what page you want to end: ").split(",")
+starting_page = int(page[0])
+ending_page = int(page[1])
+
 with reader.open(loc) as pdf:
-    page = pdf.pages[0]
+    # Use for Preview
+    page = pdf.pages[starting_page-1]
     data = page.extract_table()
-    column_names = data[1]
-    for entrie in data[2:]:
+    for entrie in data:
         rowList = []
         for line in entrie: # cleaning up
             line = str(line).replace("\n",", ")
             rowList.append(line)
-        for word in keywords:
-            for line in rowList:
-                if word.lower() in str(line).lower():
-                    mainList.append(rowList)
-                    break
-    rowList = []
-    for line in column_names: # cleaning up
-            line = str(line).replace("\n",", ")
-            rowList.append(line)
+        mainList.append(rowList)
+    for entrie in mainList: # cleaning up
+        print(entrie)
+    print("\n\n\n\n\n\n\n")
+    starting_entrie = int(input("Based on this preview, which entrie would you like to start with?: "))
+    ending_entrie = int(input("Based on this preview, which entrie would you like to end with. If no preference please enter 0?: "))
+    while (ending_entrie < starting_entrie and ending_entrie != 0) or ending_entrie > len(data) :
+        print("invalid. Starting number must be less than ending number adn ending number must fit between domain of data")
+        starting_entrie = int(input("Based on this preview, which entrie would you like to start with?: "))
+        ending_entrie = int(input("Based on this preview, which entrie would you like to end with. If no preference please enter 0?: "))
+    
+    # Automation
+    mainList = []
+    for page in pdf.pages[starting_page-1:ending_page-1]:
+        data = page.extract_table()
+        for entrie in data[starting_entrie-1:ending_entrie-1]:
+            rowList = []
+            for line in entrie: # cleaning up
+                line = str(line).replace("\n",", ")
+                rowList.append(line)
+            for word in keywords:
+                for line in rowList:
+                    if word.lower() in str(line).lower():
+                        mainList.append(rowList)
+                        break
+        rowList = []
+
+
     # for page in pdf.pages:
     #     data = page.extract_table()
     #     coluumn_names = data[1]
@@ -109,7 +134,7 @@ with reader.open(loc) as pdf:
     #                     mainList.append(rowList)
     #                     break
     
-print(mainList)
+# print(mainList)
 print("\n\n\n\n\n\n\n")
 final= []
 if mainList:
