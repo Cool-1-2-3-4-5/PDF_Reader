@@ -8,10 +8,10 @@ from dotenv import load_dotenv
 from ddgs import DDGS
 load_dotenv()
 
-# gemini_key = os.getenv('GEMINI_KEY')
+gemini_key = os.getenv('GEMINI_KEY')
 file_name = os.getenv('FILE_NAME')
 
-# client = genai.Client(api_key=gemini_key)
+client = genai.Client(api_key=gemini_key)
 
 def orderganizeData(reorderedList,rawData):
     finalUpdatedList = []
@@ -32,24 +32,41 @@ def orderganizeData(reorderedList,rawData):
 def search(prompt,column):
     additional = ""
     if column == 1:
-        additional = " Address"
+        additional = " address -site:yelp.com"
     elif column == 2:
         additional = " Phone Number"
     elif column == 3:
-        additional = " LinkedIn"
+        additional = " site:linkedin.com/company/"
     elif column == 4:
-        additional = " Website"
+        additional = " -site:wikipedia.org -site:facebook.com -site:instagram.com"
     else:
         pass         
-    result = DDGS().text((prompt+additional),max_results=1)
+    result = DDGS().text((prompt+additional),region='wt-wt',backend='api',max_results=5)
     if result:
+        phone_pattern = r"(\+?\d{1,2}\s?)?(\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4})"
+        company_pattern = "www"
         if column == 2:
-            phone_number = result[0]["body"]
-            return phone_number
-            #Need to add gemini
+            for option in result:
+                phone_number = option["body"]
+                match = re.search(phone_pattern, phone_number) 
+                if match:
+                    return match.group(0).strip() 
+            return None
+        elif column == 4: #company website
+            for option in result:
+                print(option["href"])
+            for option in result:
+                company_link = option["href"]
+                print(company_link)
+                if company_pattern in company_link.lower():
+                    return company_link
+                return None
         else:
+            # company_link = option["href"]
+            # print(company_link)
+            # match = re.search(company_pattern, company_link)
             return result[0]["href"]
-
+            
 
 def analyseDataGemini(prompt, data):
     formatted_data = "\n".join([str(row) for row in data])
@@ -63,7 +80,7 @@ def analyseDataGemini(prompt, data):
     except Exception as exit:
         if "429" in str(exit):
             print("API TIME OUT")
-        return True
+        return None,True
 def text_cleaner(raw_text):
     match = re.search(r'\[.*\]', raw_text, re.DOTALL)
     final_array = json.loads(match.group(0))
@@ -118,26 +135,11 @@ with reader.open(loc) as pdf:
                         mainList.append(rowList)
                         break
         rowList = []
-
-
-    # for page in pdf.pages:
-    #     data = page.extract_table()
-    #     coluumn_names = data[1]
-    #     for entrie in data[2:]:
-    #         rowList = []
-    #         for line in entrie: # cleaning up
-    #             line = str(line).replace("\n",", ")
-    #             rowList.append(line)
-    #         for word in keywords:
-    #             for line in rowList:
-    #                 if (word.lower() or word.upper()) in (str(line).lower() or str(line).upper()):
-    #                     mainList.append(rowList)
-    #                     break
     
-# print(mainList)
+print(mainList)
 print("\n\n\n\n\n\n\n")
 final= []
-if mainList:
+if len(mainList) > 0:
     gemini_output,TimedOut = analyseDataGemini("Here is a company entry, based on this entry Find where the CompanyName, Address, Phone number, Linkedid, and Website are located. I might give you more than 5 or less than 5 entries. Return a 1D JSON format array with the number corresponding to place where that information is found in the entrie: Example if Phone number is on 6 column in the raw data, then return 5 in 4th index of array. Start at 0. If any of these info is not found return -1 for that entrie. Your ouput hould only be that array no talking", mainList[0])
     if not TimedOut:
         order_array = text_cleaner(gemini_output.text)
@@ -149,6 +151,13 @@ else:
     print("No companies found")
 print("\n\n\n\n\n\n\n")
 print(final)
+
+with open("data.json","w") as file:
+    json.dump(final,file,indent=4)
+
+print("\n\n\n\n\n\n\n")
+print("Succesfulley updated JSON")
+
 # Here is the list of columns. Analyse the data and reorder the entries to fit this order: CompanyName, Address, Phone number(If not found in the data, Replace with N/A), Linkedin(If not found in the data, Replace with N/A),  Company Website(If not found in the data, Replace with N/A). If any of this information is not retriable, write the entrie with N/A. Return your response as a JSON array of arrays (matrix format). Example: [['Company1', 'Address1', 'Phone1', 'LinkedIn1', 'Website1'], ['Company2', 'Address2', 'Phone2', 'LinkedIn2', 'Website2]]. Return ONLY the JSON array, no other text.
 
 
@@ -193,3 +202,20 @@ print(final)
 
     #     updated_List.append(row)
     # return updated_List
+
+
+
+
+    # for page in pdf.pages:
+    #     data = page.extract_table()
+    #     coluumn_names = data[1]
+    #     for entrie in data[2:]:
+    #         rowList = []
+    #         for line in entrie: # cleaning up
+    #             line = str(line).replace("\n",", ")
+    #             rowList.append(line)
+    #         for word in keywords:
+    #             for line in rowList:
+    #                 if (word.lower() or word.upper()) in (str(line).lower() or str(line).upper()):
+    #                     mainList.append(rowList)
+    #                     break
