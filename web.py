@@ -127,18 +127,38 @@ else:
                                 re_ordered_array = []
                                 re_ordered_array = orderganizeData(order_array, mainList)
                                 final = re_ordered_array
+                                st.session_state['Data_organized'] = final
                         else:
                             st.write("No companies found")
-
-                        st.write("")
-                        st.write("")
-                        st.write(final)
-
-                        with open("data.json", "w") as file:
-                            json.dump(final, file, indent=4)
-
+            if 'Data_organized' in st.session_state:
+                final = st.session_state['Data_organized']
+                st.write("")
+                st.write("")
+                st.write(final)
+                data_check = st.text_input("do you want to read your old data:")
+                if data_check:
+                    if data_check == password_for_gemini_key:
+                        st.write("Good")
+                        old_data = []
+                        with open("data.json", "r") as file:
+                            old_data = json.load(file)
+                        augment = st.text_input("do you 'Update' or 'Clear' old data:")
+                        if augment:
+                            if augment == "Update":
+                                first_elements_current_list = {row[0].lower() for row in final}
+                                for i in range(len(old_data)):
+                                    if old_data[i][0] not in first_elements_current_list:
+                                        final.append(old_data[i])
+                                st.write("Data retrieve and updated with new info")
+                            else:
+                                st.write("Data cleared")
+                            with open("data.json", "w") as file:
+                                json.dump(final, file, indent=4)
                         st.write("")
                         st.write("")
                         st.write("Succesfulley updated JSON")
+                    else:
+                        st.write("Password incorrect data not assecible")
+
     except ValueError:
         st.write("Please enter valid numbers for pages")
