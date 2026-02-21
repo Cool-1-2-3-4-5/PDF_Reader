@@ -1,7 +1,5 @@
-﻿from google import genai
+from google import genai
 import pdfplumber as reader
-import os
-import googlemaps
 import re
 import os
 import json
@@ -99,54 +97,33 @@ Text:
         return None
 
 
-def orderganizeData(reorderedList, rawData,maps_api):
+def orderganizeData(reorderedList, rawData):
     finalUpdatedList = []
-    for company_info in rawData:
-        main_List = maps_search(str(company_info[reorderedList[0]]),maps_api)
-        tempList = ["-1", "-1", "-1", "-1", "-1"]
-        if len(main_List) != 0: # google maps worked
-            tempList = main_List
-            print("WORKED")
-        print(company_info[reorderedList[0]])
-        print(tempList)
-        print(reorderedList)
+    for company in rawData:
+        tempList = ["0", "0", "0", "0", "0"]
         for column_entrie in range(len(reorderedList)):
-            if reorderedList[column_entrie] == -1 and tempList[column_entrie] == "-1": # not in data or google maps
-                print("CE" + str(column_entrie))
-                tempList[column_entrie] = search(str(company_info[reorderedList[0]]), column_entrie)
-            elif reorderedList[column_entrie] == -1 and tempList[column_entrie] != -1: #  not in data but in google maps
-                pass
-            else: #  in data but not in google maps OR in data and in google maps
-                tempList[column_entrie] = company_info[reorderedList[column_entrie]]
+            if reorderedList[column_entrie] == -1:
+                tempList[column_entrie] = search(str(company[reorderedList[0]]), column_entrie)
+            else:
+                tempList[column_entrie] = company[reorderedList[column_entrie]]
         finalUpdatedList.append(tempList)
     return finalUpdatedList
 
 def maps_search(company_name,api_key):
     maps_access = googlemaps.Client(api_key)
+    print("HI")
     results = maps_access.find_place(input = company_name,input_type="textquery")
     if results:
         details = maps_access.place(results['candidates'][0]['place_id'])
         full_list = []
-        if 'name' in details['result']:
-            full_list.append(details['result']['name'])
-        else:
-            full_list.append("-1")
-        if 'vicinity' in details['result']:
-            full_list.append(details['result']['vicinity'])
-        else:
-            full_list.append("-1")
-        if 'international_phone_number' in details['result']:
-            full_list.append(details['result']['international_phone_number'])
-        else:
-            full_list.append("-1")
-        full_list.append("-1") # LinkinIn
-        if 'website' in details['result']:
-            full_list.append(details['result']['website'])
-        else:
-            full_list.append("-1")
-        return full_list
+        
+        full_list.append(details['result']['name'])
+        full_list.append(details['result']['vicinity'])
+        full_list.append(details['result']['international_phone_number'])
+        full_list.append(details['result']['website'])
+        return full_list,True
     else:
-        return []
+        return [],False
 
 
 def search(prompt, column):
