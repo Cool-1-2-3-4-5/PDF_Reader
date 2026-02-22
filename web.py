@@ -1,5 +1,6 @@
 ﻿import streamlit as st
 import pdfplumber as reader
+import googlemaps
 import json
 import re
 import os
@@ -13,7 +14,6 @@ load_dotenv()
 st.title("PDF Company Extractor")
 
 password_for_gemini_key = os.getenv('PASSWORD')
-maps_api_key = os.getenv('MAPS_KEY')
 def get_user_credentials():
     gemini_key = st.text_input("Enter your Gemini API Key:", type="password")
     if gemini_key == password_for_gemini_key:
@@ -86,7 +86,8 @@ else:
                 elif ending_entrie > len(st.session_state.get('table_data', [])):
                     st.write("invalid. Starting number must be less than ending number and ending number must fit between domain of data")
                 else:
-                    if st.button("Process Companies"):
+                    if st.button("Process Companies") or "PROCESSED" in st.session_state:
+                        st.session_state['PROCESSED'] = True
                         mainList = []
                         with reader.open(loc) as pdf:
                             for page_obj in pdf.pages[starting_page-1:ending_page-1]:
@@ -126,9 +127,28 @@ else:
                                     str += "Company Website found"
                                 st.write(str)
                                 re_ordered_array = []
-                                re_ordered_array = orderganizeData(order_array, mainList,maps_api_key)
-                                final = re_ordered_array
-                                st.session_state['Data_organized'] = final
+                                print("!EN")
+                                data_check = st.text_input("MAPS API Please:", type="password")
+                                print(data_check)
+                                if data_check:
+                                    print("ENTERED")
+                                    if data_check == password_for_gemini_key or st.session_state['API ADDED']:
+                                        maps_api_key = os.getenv('MAPS_KEY')
+                                        re_ordered_array = orderganizeData(order_array, mainList,maps_api_key)
+                                        final = re_ordered_array
+                                        st.session_state['Data_organized'] = final
+                                        st.session_state['API ADDED'] = True
+                                    else:
+                                        try:
+                                            maps_access = googlemaps.Client(data_check)
+                                            st.write("Key is valid!")
+                                            re_ordered_array = orderganizeData(order_array, mainList,maps_api_key)
+                                            final = re_ordered_array
+                                            st.session_state['API ADDED'] = True
+                                            value = True
+                                        except Exception as e:
+                                            st.write("Key is invalid or error occurred, Maps integration will not work")
+                                            st.session_state['API ADDED'] = False
                         else:
                             st.write("No companies found")
             if 'Data_organized' in st.session_state:
@@ -136,17 +156,20 @@ else:
                 st.write("")
                 st.write("")
                 st.write(final)
-                data_check = st.text_input("do you want to read your old data:", type="password")
+                data_check = st.text_input("Enter DSQ Password:", type="password")
                 if data_check:
                     if data_check == password_for_gemini_key:
                         st.write("Good")
                         old_data = []
                         with open("data.json", "r") as file:
                             old_data = json.load(file)
+                        print(final)
+                        print(old_data)
                         augment = st.text_input("do you 'Update' or 'Clear' old data:")
                         if augment:
                             if augment == "Update":
                                 first_elements_current_list = {row[0].lower() for row in final}
+                                print(first_elements_current_list)
                                 for i in range(len(old_data)):
                                     if old_data[i][0] not in first_elements_current_list:
                                         final.append(old_data[i])
