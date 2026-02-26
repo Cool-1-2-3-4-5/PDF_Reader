@@ -130,25 +130,26 @@ else:
                                 print("!EN")
                                 data_check = st.text_input("MAPS API Please:", type="password")
                                 print(data_check)
-                                if data_check:
-                                    print("ENTERED")
-                                    if data_check == password_for_gemini_key or st.session_state['API ADDED']:
-                                        maps_api_key = os.getenv('MAPS_KEY')
-                                        re_ordered_array = orderganizeData(order_array, mainList,maps_api_key)
-                                        final = re_ordered_array
-                                        st.session_state['Data_organized'] = final
-                                        st.session_state['API ADDED'] = True
-                                    else:
-                                        try:
-                                            maps_access = googlemaps.Client(data_check)
-                                            st.write("Key is valid!")
+                                if not "API ADDED" in st.session_state or st.session_state['API ADDED'] == False:
+                                    if data_check:
+                                        print("ENTERED")
+                                        if data_check == password_for_gemini_key:
+                                            maps_api_key = os.getenv('MAPS_KEY')
                                             re_ordered_array = orderganizeData(order_array, mainList,maps_api_key)
                                             final = re_ordered_array
+                                            st.session_state['Data_organized'] = final
                                             st.session_state['API ADDED'] = True
-                                            value = True
-                                        except Exception as e:
-                                            st.write("Key is invalid or error occurred, Maps integration will not work")
-                                            st.session_state['API ADDED'] = False
+                                        else:
+                                            try:
+                                                maps_access = googlemaps.Client(data_check)
+                                                st.write("Key is valid!")
+                                                re_ordered_array = orderganizeData(order_array, mainList,maps_api_key)
+                                                final = re_ordered_array
+                                                st.session_state['API ADDED'] = True
+                                                value = True
+                                            except Exception as e:
+                                                st.write("Key is invalid or error occurred, Maps integration will not work")
+                                                st.session_state['API ADDED'] = False
                         else:
                             st.write("No companies found")
             if 'Data_organized' in st.session_state:
