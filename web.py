@@ -143,12 +143,13 @@ else:
                                             try:
                                                 maps_access = googlemaps.Client(data_check)
                                                 st.write("Key is valid!")
-                                                re_ordered_array = orderganizeData(order_array, mainList,maps_api_key)
+                                                re_ordered_array = orderganizeData(order_array, mainList,data_check)
                                                 final = re_ordered_array
                                                 st.session_state['API ADDED'] = True
                                                 value = True
                                             except Exception as e:
-                                                st.write("Key is invalid or error occurred, Maps integration will not work")
+                                                st.write("Key is invalid or error occurred, Maps integration will not work. Alt to DDGS")
+                                                re_ordered_array = orderganizeData(order_array, mainList,"DDGS")
                                                 st.session_state['API ADDED'] = False
                         else:
                             st.write("No companies found")

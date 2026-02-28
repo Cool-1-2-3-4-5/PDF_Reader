@@ -102,22 +102,30 @@ Text:
 def orderganizeData(reorderedList, rawData,maps_api):
     finalUpdatedList = []
     for company_info in rawData:
-        main_List = maps_search(str(company_info[reorderedList[0]]),maps_api)
-        tempList = ["-1", "-1", "-1", "-1", "-1"]
-        if len(main_List) != 0: # google maps worked
-            tempList = main_List
-            print("WORKED")
-        print(company_info[reorderedList[0]])
-        print(tempList)
-        print(reorderedList)
-        for column_entrie in range(len(reorderedList)):
-            if reorderedList[column_entrie] == -1 and tempList[column_entrie] == "-1": # not in data or google maps
-                print("CE" + str(column_entrie))
-                tempList[column_entrie] = search(str(company_info[reorderedList[0]]), column_entrie)
-            elif reorderedList[column_entrie] == -1 and tempList[column_entrie] != -1: #  not in data but in google maps
-                pass
-            else: #  in data but not in google maps OR in data and in google maps
-                tempList[column_entrie] = company_info[reorderedList[column_entrie]]
+        if maps_api != "DDGS":
+            main_List = maps_search(str(company_info[reorderedList[0]]),maps_api)
+            tempList = ["-1", "-1", "-1", "-1", "-1"]
+            if len(main_List) != 0: # google maps worked
+                tempList = main_List
+                print("WORKED")
+            print(company_info[reorderedList[0]])
+            print(tempList)
+            print(reorderedList)
+            for column_entrie in range(len(reorderedList)):
+                if reorderedList[column_entrie] == -1 and tempList[column_entrie] == "-1": # not in data or google maps
+                    print("MAPS: " + str(column_entrie))
+                    tempList[column_entrie] = search(str(company_info[reorderedList[0]]), column_entrie)
+                elif reorderedList[column_entrie] == -1 and tempList[column_entrie] != -1: #  not in data but in google maps
+                    pass
+                else: #  in data but not in google maps OR in data and in google maps
+                    tempList[column_entrie] = company_info[reorderedList[column_entrie]]
+        else: # KEY unavlible
+            for column_entrie in range(len(reorderedList)):
+                if reorderedList[column_entrie] == -1: # not in data or google maps
+                    print("DDGS: " + str(column_entrie))
+                    tempList[column_entrie] = search(str(company_info[reorderedList[0]]), column_entrie)
+                else: #  in data 
+                    tempList[column_entrie] = company_info[reorderedList[column_entrie]]
         finalUpdatedList.append(tempList)
     return finalUpdatedList
 
