@@ -149,7 +149,7 @@ else:
                                                 value = True
                                             except Exception as e:
                                                 st.write("Key is invalid or error occurred, Maps integration will not work. Alt to DDGS")
-                                                re_ordered_array = orderganizeData(order_array, mainList,"DDGS")
+                                                re_ordered_array = orderganizeData(order_array, mainList,"data_check")
                                                 st.session_state['API ADDED'] = False
                         else:
                             st.write("No companies found")
