@@ -102,9 +102,9 @@ Text:
 def orderganizeData(reorderedList, rawData,maps_api):
     finalUpdatedList = []
     for company_info in rawData:
+        tempList = ["-1", "-1", "-1", "-1", "-1"]
         if maps_api != "DDGS":
             main_List = maps_search(str(company_info[reorderedList[0]]),maps_api)
-            tempList = ["-1", "-1", "-1", "-1", "-1"]
             if len(main_List) != 0: # google maps worked
                 tempList = main_List
                 print("WORKED")
