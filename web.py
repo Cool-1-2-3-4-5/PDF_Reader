@@ -13,12 +13,12 @@ load_dotenv()
 
 st.title("PDF Company Extractor")
 
-password_for_gemini_key = os.getenv('PASSWORD')
+main_password = os.getenv('PASSWORD')
 
 def get_user_credentials():
     gemini_key = st.text_input("Enter your Gemini API Key:", type="password")
     if gemini_key:
-        if gemini_key == password_for_gemini_key:
+        if gemini_key == main_password:
             gemini_key = os.getenv('GEMINI_KEY')
         try:
             client = genai.Client(api_key=gemini_key)
@@ -90,7 +90,7 @@ else:
                         st.session_state['table_data'] = data
 
             if 'preview_data' in st.session_state:
-                for entrie in st.session_state['preview_data']:
+                for entrie in st.session_state.get('preview_data', []):
                     st.write(entrie)
                 st.write("")
                 st.write("")
@@ -149,32 +149,32 @@ else:
                                         st.write(", ".join(result_parts))
                                         st.session_state['mainList'] = mainList
                                 else:
-                                    order_array = st.session_state['order_array']
-                                    mainList = st.session_state['mainList']
+                                    order_array = st.session_state.get('order_array')
+                                    mainList = st.session_state.get('mainList')
                             else:
                                 st.write("No companies found")
                         
             if 'Data_organized' not in st.session_state and 'order_array' in st.session_state:
                 if st.session_state.get('order_array'):
-                    order_array = st.session_state['order_array']
-                    mainList = st.session_state['mainList']
+                    order_array = st.session_state.get('order_array')
+                    mainList = st.session_state.get('mainList')
                     
                     print("!EN")
-                    data_check = st.text_input("MAPS API Please:", type="password")
-                    print(data_check)
-                    if data_check:
+                    password_for_maps = st.text_input("MAPS API Please:", type="password")
+                    print(password_for_maps)
+                    if password_for_maps:
                         if not 'maps_key_validated' in st.session_state:
                             print("ENTERED")
-                            if data_check == password_for_gemini_key:
+                            if password_for_maps == main_password:
                                 maps_api_key = os.getenv('MAPS_KEY')
                                 re_ordered_array = orderganizeData(order_array, mainList, maps_api_key)
                                 st.session_state['Data_organized'] = re_ordered_array
                                 st.session_state['maps_key_validated'] = True
                             else:
                                 try:
-                                    maps_access = googlemaps.Client(data_check)
+                                    maps_access = googlemaps.Client(password_for_maps)
                                     st.write("Key is valid!")
-                                    re_ordered_array = orderganizeData(order_array, mainList, data_check)
+                                    re_ordered_array = orderganizeData(order_array, mainList, password_for_maps)
                                     st.session_state['Data_organized'] = re_ordered_array
                                     st.session_state['maps_key_validated'] = True
                                 except Exception as e:
@@ -185,35 +185,39 @@ else:
                                     print("HERE")
             if 'Data_organized' in st.session_state:
                 if 'password_entered' not in st.session_state:
-                    final = st.session_state['Data_organized']
+                    final = st.session_state.get('Data_organized')
                     st.write("")
                     st.write("")
                     st.write(final)
-                    data_check = st.text_input("Enter DSQ Password:", type="password")
-                    if data_check:
-                        if data_check == password_for_gemini_key:
+                    password_to_update_data = st.text_input("Enter DSQ Password:", type="password")
+                    print("I enters the password_entry")
+                    if password_to_update_data:
+                        print()
+                        if password_to_update_data == main_password:
                             st.write("Good")
                             st.session_state['password_entered'] = True
                             st.session_state['old_data'] = []
                             with open("data.json", "r") as file:
                                 st.session_state['old_data'] = json.load(file)
                         else:
+                            st.session_state['password_entered'] = False
                             st.write("Password incorrect data not assecible")
+                    print("I exited the password_entry")
                 
-                if st.session_state['password_entered']:
+                if st.session_state.get('password_entered'):
                     if 'augment_action' not in st.session_state:
                         old_data = st.session_state.get('old_data', [])
-                        final = st.session_state['Data_organized']
+                        final = st.session_state.get('Data_organized')
                         print(final)
                         print(old_data)
                         augment = st.text_input("do you 'Update' or 'Clear' old data:")
                         if augment:
                             st.session_state['augment_action'] = augment
                     
-                    if st.session_state['augment_action']:
+                    if st.session_state.get('augment_action'):
                         if 'json_saved' not in st.session_state:
-                            augment = st.session_state['augment_action']
-                            final = st.session_state['Data_organized']
+                            augment = st.session_state.get('augment_action')
+                            final = st.session_state.get('Data_organized')
                             old_data = st.session_state.get('old_data', [])
                             
                             if augment == "Update":
@@ -231,8 +235,8 @@ else:
                         
                         st.write("")
                         st.write("")
-                        data = framework.DataFrame(st.session_state['Data_organized'])
-                        st.table(data)
+                        data = framework.DataFrame(st.session_state.get('Data_organized', []))
+                        st.code(data.to_csv(sep='\t', index=False, quoting=1), language="text")
                         st.write("Succesfulley updated JSON")
 
     except ValueError:

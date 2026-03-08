@@ -11,10 +11,10 @@ load_dotenv()
 
 
 def extract_table_robust(page):
-    """
-    Try multiple methods to extract table data from a PDF page.
-    Returns a list of rows, or None if no data found.
-    """
+    
+    #Try multiple methods to extract table data from a PDF page.
+    #Returns a list of rows, or None if no data found.
+    
     # Method 1: Try standard table extraction
     table = page.extract_table()
     if table and len(table) > 0:
@@ -73,9 +73,7 @@ def extract_table_robust(page):
 
 
 def extract_with_ai_fallback(page, api_key):
-    """
-    Use AI to extract structured data from raw PDF text when table extraction fails.
-    """
+    # Use AI to extract structured data from raw PDF text when table extraction fails.
     text = page.extract_text()
     if not text:
         return None
@@ -173,15 +171,15 @@ def search(prompt, column):
     if result:
         phone_pattern_first_check = r"(\+?\d{1,2}\s?)?(\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4})"
         phone_pattern_second_check = re.compile("""
-(\+1\ ?)? # optional +1 and space
-\(?       # optional (
-[0-9]{3}
-\)?       # optional )
-[- ]?     # optional - or space
-[0-9]{3}
--?        # optional -
-[0-9]{4}
-""", flags=re.VERBOSE)
+        (\+1\ ?)? # optional +1 and space
+        \(?       # optional (
+        [0-9]{3}
+        \)?       # optional )
+        [- ]?     # optional - or space
+        [0-9]{3}
+        -?        # optional -
+        [0-9]{4}
+        """, flags=re.VERBOSE)
         if column == 2:
             for option in result:
                 phone_number = option["body"]
