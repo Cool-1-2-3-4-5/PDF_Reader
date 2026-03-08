@@ -142,7 +142,9 @@ def maps_search(company_name,api_key):
         else:
             full_list.append("-1")
         if 'international_phone_number' in details['result']:
-            full_list.append(details['result']['international_phone_number'])
+            num = (details['result']['international_phone_number']).replace("+","")
+            print(num)
+            full_list.append(num)
         else:
             full_list.append("-1")
         full_list.append("-1") # LinkinIn
@@ -188,6 +190,7 @@ def search(prompt, column):
                     possible_number = match.group(0).strip()
                     numbers = phone_pattern_second_check.findall(possible_number)
                     if numbers:
+                        possible_number = possible_number.replace("o","")
                         return possible_number
             return None
         elif column == 4:
