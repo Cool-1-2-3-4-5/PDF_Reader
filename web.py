@@ -14,12 +14,14 @@ load_dotenv()
 st.title("PDF Company Extractor")
 
 main_password = os.getenv('PASSWORD')
-
+st.session_state['main_password_active'] = False
 def get_user_credentials():
     gemini_key = st.text_input("Enter your Gemini API Key:", type="password")
     if gemini_key:
         if gemini_key == main_password:
             gemini_key = os.getenv('GEMINI_KEY')
+            global main_password_active
+            st.session_state['main_password_active'] = True
         try:
             client = genai.Client(api_key=gemini_key)
             response = client.models.generate_content(
@@ -31,21 +33,20 @@ def get_user_credentials():
         except Exception as e:
             st.write("Key is invalid or error occurred, Gemini integration will not work")
     
-    file_path = st.text_input("Enter the PDF file path:")
-    file_path = file_path.strip().strip('"').strip("'")
-    return gemini_key, file_path
+    uploaded_file = st.file_uploader("Upload your PDF file (Only 1 file)", type="pdf")
+    return gemini_key, uploaded_file
 
-gemini_key, file_path = get_user_credentials()
+gemini_key, uploaded_file = get_user_credentials()
 
 if not gemini_key:
     st.warning("Please enter your Gemini API Key")
     st.stop()
 
-if not file_path:
-    st.warning("Please enter the PDF file path")
+if not uploaded_file:
+    st.warning("Please upload a PDF file")
     st.stop()
 
-loc = file_path
+loc = uploaded_file
 
 keywords = st.text_input("Enter what words you wanna have followed by comma:")
 keywords = keywords.split(",")
@@ -160,17 +161,12 @@ else:
                     mainList = st.session_state.get('mainList')
                     
                     print("!EN")
-                    password_for_maps = st.text_input("MAPS API Please:", type="password")
-                    print(password_for_maps)
-                    if password_for_maps:
-                        if not 'maps_key_validated' in st.session_state:
-                            print("ENTERED")
-                            if password_for_maps == main_password:
-                                maps_api_key = os.getenv('MAPS_KEY')
-                                re_ordered_array = orderganizeData(order_array, mainList, maps_api_key)
-                                st.session_state['Data_organized'] = re_ordered_array
-                                st.session_state['maps_key_validated'] = True
-                            else:
+                    if not st.session_state['main_password_active']: # not DSQ
+                        password_for_maps = st.text_input("MAPS API Please:", type="password")
+                        print(password_for_maps)
+                        if password_for_maps:
+                            if not 'maps_key_validated' in st.session_state:
+                                print("ENTERED")
                                 try:
                                     maps_access = googlemaps.Client(password_for_maps)
                                     st.write("Key is valid!")
@@ -183,25 +179,25 @@ else:
                                     st.session_state['Data_organized'] = re_ordered_array
                                     st.session_state['maps_key_validated'] = True
                                     print("HERE")
+                    else:
+                        maps_api_key = os.getenv('MAPS_KEY')
+                        re_ordered_array = orderganizeData(order_array, mainList, maps_api_key)
+                        st.session_state['Data_organized'] = re_ordered_array
+                        st.session_state['maps_key_validated'] = True
             if 'Data_organized' in st.session_state:
                 if 'password_entered' not in st.session_state:
                     final = st.session_state.get('Data_organized')
                     st.write("")
                     st.write("")
                     st.write(final)
-                    password_to_update_data = st.text_input("Enter DSQ Password:", type="password")
-                    print("I enters the password_entry")
-                    if password_to_update_data:
-                        print()
-                        if password_to_update_data == main_password:
-                            st.write("Good")
-                            st.session_state['password_entered'] = True
-                            st.session_state['old_data'] = []
-                            with open("data.json", "r") as file:
-                                st.session_state['old_data'] = json.load(file)
-                        else:
-                            st.session_state['password_entered'] = False
-                            st.write("Password incorrect data not assecible")
+                    if st.session_state['main_password_active']:
+                        st.session_state['password_entered'] = True
+                        st.session_state['old_data'] = []
+                        with open("data.json", "r") as file:
+                            st.session_state['old_data'] = json.load(file)
+                    else:
+                        st.session_state['password_entered'] = False
+                        st.write("Password incorrect data not assecible")
                     print("I exited the password_entry")
                 
                 if st.session_state.get('password_entered'):
