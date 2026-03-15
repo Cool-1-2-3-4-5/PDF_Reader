@@ -13,13 +13,13 @@ load_dotenv()
 
 st.title("PDF Company Extractor")
 
-main_password = st.secrets.get("PASSWORD") or os.getenv('PASSWORD')
+main_password = os.getenv('PASSWORD') or st.secrets.get("PASSWORD")
 st.session_state['main_password_active'] = False
 def get_user_credentials():
     gemini_key = st.text_input("Enter your Gemini API Key:", type="password")
     if gemini_key:
         if gemini_key == main_password:
-            gemini_key = st.secrets.get("GEMINI_KEY") or os.getenv('GEMINI_KEY')
+            gemini_key = os.getenv('GEMINI_KEY') or st.secrets.get("GEMINI_KEY")
             global main_password_active
             st.session_state['main_password_active'] = True
         try:
@@ -188,7 +188,7 @@ else:
                                 pass
                     else:
                         if 'maps_key_validated' not in st.session_state or st.session_state.get('cached_keywords_maps') != keywords:
-                            maps_api_key = st.secrets.get("MAPS_KEY") or os.getenv('MAPS_KEY')
+                            maps_api_key = os.getenv('MAPS_KEY') or st.secrets.get("MAPS_KEY")
                             re_ordered_array = orderganizeData(order_array, mainList, maps_api_key)
                             st.session_state['Data_organized'] = re_ordered_array
                             st.session_state['maps_key_validated'] = True
