@@ -75,20 +75,19 @@ else:
             
             starting_page = st.session_state.get('starting_page')
             ending_page = st.session_state.get('ending_page')
-
+            
             if st.button("Load Preview"):
-                if 'preview_data' not in st.session_state:
-                    with reader.open(loc) as pdf:
-                        page_obj = pdf.pages[starting_page-1]
-                        data = page_obj.extract_table()
-                        for entrie in data:
-                            rowList = []
-                            for line in entrie:
-                                line = str(line).replace("\n",", ")
-                                rowList.append(line)
-                            mainList.append(rowList)
-                        st.session_state['preview_data'] = mainList
-                        st.session_state['table_data'] = data
+                with reader.open(loc) as pdf:
+                    page_obj = pdf.pages[starting_page-1]
+                    data = page_obj.extract_table()
+                    for entrie in data:
+                        rowList = []
+                        for line in entrie:
+                            line = str(line).replace("\n",", ")
+                            rowList.append(line)
+                        mainList.append(rowList)
+                    st.session_state['preview_data'] = mainList
+                    st.session_state['table_data'] = data
 
             if 'preview_data' in st.session_state:
                 for entrie in st.session_state.get('preview_data', []):
@@ -105,67 +104,70 @@ else:
                     st.write("invalid. Starting number must be less than ending number and ending number must fit between domain of data")
                 else:
                     if st.button("Process Companies") or "PROCESSED" in st.session_state:
-                        if "PROCESSED" not in st.session_state:
-                            st.session_state['PROCESSED'] = True
-                            mainList = []
-                            with reader.open(loc) as pdf:
-                                for page_obj in pdf.pages[starting_page-1:ending_page-1]:
-                                    data = page_obj.extract_table()
-                                    end_idx = ending_entrie-1 if ending_entrie != 0 else None
-                                    for entrie in data[starting_entrie-1:end_idx]:
-                                        rowList = []
-                                        for line in entrie:
-                                            line = str(line).replace("\n",", ")
-                                            rowList.append(line)
-                                        for word in keywords:
-                                            for line in rowList:
-                                                if word.lower() in str(line).lower():
-                                                    mainList.append(rowList)
-                                                    break
-                                        rowList = []
+                        st.session_state['PROCESSED'] = True
+                        mainList = []
+                        with reader.open(loc) as pdf:
+                            for page_obj in pdf.pages[starting_page-1:ending_page-1]:
+                                data = page_obj.extract_table()
+                                end_idx = ending_entrie-1 if ending_entrie != 0 else None
+                                for entrie in data[starting_entrie-1:end_idx]:
+                                    rowList = []
+                                    for line in entrie:
+                                        line = str(line).replace("\n",", ")
+                                        rowList.append(line)
+                                    for word in keywords:
+                                        for line in rowList:
+                                            if word.lower() in str(line).lower():
+                                                mainList.append(rowList)
+                                                break
+                                    rowList = []
 
-                            str_result = ""
-                            st.write(mainList)
-                            st.write("")
-                            st.write("")
+                        str_result = ""
+                        st.write(mainList)
+                        st.write("")
+                        st.write("")
 
-                            final = []
-                            if len(mainList) > 0:
-                                if "gemini_output" not in st.session_state:
-                                    gemini_output, TimedOut = analyseDataGeminiWeb("Here is a company entry, based on this entry Find where the CompanyName, Address, Phone number, Linkedid, and Website are located. I might give you more than 5 or less than 5 entries. Return a 1D JSON format array with the number corresponding to place where that information is found in the entrie: Example if Phone number is on 6 column in the raw data, then return 5 in 4th index of array. Start at 0. If any of these info is not found return -1 for that entrie. Your ouput hould only be that array no talking", mainList[0], gemini_key)
-                                    if not TimedOut:
-                                        order_array = text_cleaner(gemini_output.text)
-                                        st.session_state['order_array'] = order_array
-                                        result_parts = []
-                                        if order_array[0] != -1:
-                                            result_parts.append("Company found")
-                                        if order_array[1] != -1:
-                                            result_parts.append("Address found")
-                                        if order_array[2] != -1:
-                                            result_parts.append("Phone Number found")
-                                        if order_array[3] != -1:
-                                            result_parts.append("LinkedIn found")
-                                        if order_array[4] != -1:
-                                            result_parts.append("Company Website found")
-                                        st.write(", ".join(result_parts))
-                                        st.session_state['mainList'] = mainList
-                                else:
-                                    order_array = st.session_state.get('order_array')
-                                    mainList = st.session_state.get('mainList')
+                        final = []
+                        if len(mainList) > 0:
+                            if "gemini_output" not in st.session_state or st.session_state.get('cached_keywords') != keywords:
+                                gemini_output, TimedOut = analyseDataGeminiWeb("Here is a company entry, based on this entry Find where the CompanyName, Address, Phone number, Linkedid, and Website are located. I might give you more than 5 or less than 5 entries. Return a 1D JSON format array with the number corresponding to place where that information is found in the entrie: Example if Phone number is on 6 column in the raw data, then return 5 in 4th index of array. Start at 0. If any of these info is not found return -1 for that entrie. Your ouput hould only be that array no talking", mainList[0], gemini_key)
+                                if not TimedOut:
+                                    print("Gemini Entered")
+                                    order_array = text_cleaner(gemini_output.text)
+                                    st.session_state['order_array'] = order_array
+                                    st.session_state['cached_keywords'] = keywords
+                                    st.session_state['gemini_output'] = True
+                                    result_parts = []
+                                    if order_array[0] != -1:
+                                        result_parts.append("Company found")
+                                    if order_array[1] != -1:
+                                        result_parts.append("Address found")
+                                    if order_array[2] != -1:
+                                        result_parts.append("Phone Number found")
+                                    if order_array[3] != -1:
+                                        result_parts.append("LinkedIn found")
+                                    if order_array[4] != -1:
+                                        result_parts.append("Company Website found")
+                                    st.write(", ".join(result_parts))
+                                    st.session_state['mainList'] = mainList
                             else:
-                                st.write("No companies found")
+                                order_array = st.session_state.get('order_array')
+                                mainList = st.session_state.get('mainList')
+                        else:
+                            st.write("No companies found")
                         
-            if 'Data_organized' not in st.session_state and 'order_array' in st.session_state:
+            if 'order_array' in st.session_state:
                 if st.session_state.get('order_array'):
                     order_array = st.session_state.get('order_array')
                     mainList = st.session_state.get('mainList')
+                    keywords = st.session_state.get('cached_keywords', "")
                     
                     print("!EN")
                     if not st.session_state['main_password_active']: # not DSQ
                         password_for_maps = st.text_input("MAPS API Please:", type="password")
                         print(password_for_maps)
                         if password_for_maps:
-                            if not 'maps_key_validated' in st.session_state:
+                            if 'maps_key_validated' not in st.session_state or st.session_state.get('cached_keywords_maps') != keywords:
                                 print("ENTERED")
                                 try:
                                     maps_access = googlemaps.Client(password_for_maps)
@@ -173,61 +175,65 @@ else:
                                     re_ordered_array = orderganizeData(order_array, mainList, password_for_maps)
                                     st.session_state['Data_organized'] = re_ordered_array
                                     st.session_state['maps_key_validated'] = True
+                                    st.session_state['cached_keywords_maps'] = keywords
                                 except Exception as e:
                                     st.write("Key is invalid or error occurred, Maps integration will not work. Alt to DDGS")
                                     re_ordered_array = orderganizeData(order_array, mainList, "DDGS")
                                     st.session_state['Data_organized'] = re_ordered_array
                                     st.session_state['maps_key_validated'] = True
+                                    st.session_state['cached_keywords_maps'] = keywords
                                     print("HERE")
+                            else:
+                                # Maps already processed for these keywords, retrieve cached data
+                                pass
                     else:
-                        maps_api_key = os.getenv('MAPS_KEY')
-                        re_ordered_array = orderganizeData(order_array, mainList, maps_api_key)
-                        st.session_state['Data_organized'] = re_ordered_array
-                        st.session_state['maps_key_validated'] = True
+                        if 'maps_key_validated' not in st.session_state or st.session_state.get('cached_keywords_maps') != keywords:
+                            maps_api_key = os.getenv('MAPS_KEY')
+                            re_ordered_array = orderganizeData(order_array, mainList, maps_api_key)
+                            st.session_state['Data_organized'] = re_ordered_array
+                            st.session_state['maps_key_validated'] = True
+                            st.session_state['cached_keywords_maps'] = keywords
+                        else:
+                            # Maps already processed for these keywords, retrieve cached data
+                            pass
             if 'Data_organized' in st.session_state:
-                if 'password_entered' not in st.session_state:
-                    final = st.session_state.get('Data_organized')
-                    st.write("")
-                    st.write("")
-                    st.write(final)
-                    if st.session_state['main_password_active']:
-                        st.session_state['password_entered'] = True
-                        st.session_state['old_data'] = []
-                        with open("data.json", "r") as file:
-                            st.session_state['old_data'] = json.load(file)
-                    else:
-                        st.session_state['password_entered'] = False
-                        st.write("Password incorrect data not assecible")
-                    print("I exited the password_entry")
+                final = st.session_state.get('Data_organized')
+                st.write("")
+                st.write("")
+                st.write(final)
+                if st.session_state['main_password_active']:
+                    st.session_state['old_data'] = []
+                    with open("data.json", "r") as file:
+                        st.session_state['old_data'] = json.load(file)
+                else:
+                    st.write("Password incorrect data not assecible")
+                print("I exited the password_entry")
                 
-                if st.session_state.get('password_entered'):
-                    if 'augment_action' not in st.session_state:
-                        old_data = st.session_state.get('old_data', [])
-                        final = st.session_state.get('Data_organized')
-                        print(final)
-                        print(old_data)
-                        augment = st.text_input("do you 'Update' or 'Clear' old data:")
-                        if augment:
-                            st.session_state['augment_action'] = augment
+                if st.session_state.get('main_password_active'):
+                    old_data = st.session_state.get('old_data', [])
+                    final = st.session_state.get('Data_organized')
+                    print(final)
+                    print(old_data)
+                    augment = st.text_input("do you 'Update' or 'Clear' old data:")
+                    if augment:
+                        st.session_state['augment_action'] = augment
                     
                     if st.session_state.get('augment_action'):
-                        if 'json_saved' not in st.session_state:
-                            augment = st.session_state.get('augment_action')
-                            final = st.session_state.get('Data_organized')
-                            old_data = st.session_state.get('old_data', [])
-                            
-                            if augment == "Update":
-                                first_elements_current_list = {row[0].lower() for row in final}
-                                print(first_elements_current_list)
-                                for i in range(len(old_data)):
-                                    if old_data[i][0].lower() not in first_elements_current_list:
-                                        final.append(old_data[i])
-                                st.write("Data retrieve and updated with new info")
-                            else:
-                                st.write("Data cleared")
-                            with open("data.json", "w") as file:
-                                json.dump(final, file, indent=4)
-                            st.session_state['json_saved'] = True
+                        augment = st.session_state.get('augment_action')
+                        final = st.session_state.get('Data_organized')
+                        old_data = st.session_state.get('old_data', [])
+                        
+                        if augment == "Update":
+                            first_elements_current_list = {row[0].lower() for row in final}
+                            print(first_elements_current_list)
+                            for i in range(len(old_data)):
+                                if old_data[i][0].lower() not in first_elements_current_list:
+                                    final.append(old_data[i])
+                            st.write("Data retrieve and updated with new info")
+                        else:
+                            st.write("Data cleared")
+                        with open("data.json", "w") as file:
+                            json.dump(final, file, indent=4)
                         
                         st.write("")
                         st.write("")
