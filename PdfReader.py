@@ -7,12 +7,6 @@ import os
 import json
 from dotenv import load_dotenv
 from ddgs import DDGS
-import logging
-
-# Setup logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-
 load_dotenv()
 
 
@@ -134,45 +128,32 @@ def orderganizeData(reorderedList, rawData,maps_api):
     return finalUpdatedList
 
 def maps_search(company_name,api_key):
-    logger.debug(f"maps_search called with company_name: {company_name}")
-    try:
-        maps_access = googlemaps.Client(api_key)
-        logger.debug("Google Maps client created successfully")
-        
-        results = maps_access.find_place(input = company_name,input_type="textquery")
-        logger.debug(f"find_place results: {results}")
-        
-        if results and 'candidates' in results and len(results['candidates']) > 0:
-            logger.debug(f"Found {len(results['candidates'])} candidates")
-            details = maps_access.place(results['candidates'][0]['place_id'])
-            logger.debug(f"Place details retrieved successfully")
-            full_list = []
-            if 'name' in details['result']:
-                full_list.append(details['result']['name'])
-            else:
-                full_list.append("-1")
-            if 'vicinity' in details['result']:
-                full_list.append(details['result']['vicinity'])
-            else:
-                full_list.append("-1")
-            if 'international_phone_number' in details['result']:
-                num = (details['result']['international_phone_number']).replace("+","")
-                logger.debug(f"Phone number: {num}")
-                full_list.append(num)
-            else:
-                full_list.append("-1")
-            full_list.append("-1") # LinkinIn
-            if 'website' in details['result']:
-                full_list.append(details['result']['website'])
-            else:
-                full_list.append("-1")
-            logger.debug(f"Returning full_list: {full_list}")
-            return full_list
+    maps_access = googlemaps.Client(api_key)
+    results = maps_access.find_place(input = company_name,input_type="textquery")
+    if results:
+        details = maps_access.place(results['candidates'][0]['place_id'])
+        full_list = []
+        if 'name' in details['result']:
+            full_list.append(details['result']['name'])
         else:
-            logger.warning(f"No candidates found for company: {company_name}")
-            return []
-    except Exception as e:
-        logger.error(f"Error in maps_search: {str(e)}", exc_info=True)
+            full_list.append("-1")
+        if 'vicinity' in details['result']:
+            full_list.append(details['result']['vicinity'])
+        else:
+            full_list.append("-1")
+        if 'international_phone_number' in details['result']:
+            num = (details['result']['international_phone_number']).replace("+","")
+            print(num)
+            full_list.append(num)
+        else:
+            full_list.append("-1")
+        full_list.append("-1") # LinkinIn
+        if 'website' in details['result']:
+            full_list.append(details['result']['website'])
+        else:
+            full_list.append("-1")
+        return full_list
+    else:
         return []
 
 
