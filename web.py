@@ -193,15 +193,21 @@ else:
                             st.session_state['Data_organized'] = re_ordered_array
                             st.session_state['maps_key_validated'] = True
                             st.session_state['cached_keywords_maps'] = keywords
+                            print("EXIT")
                         else:
                             # Maps already processed for these keywords, retrieve cached data
                             pass
+            print("ENTER")
             if 'Data_organized' in st.session_state:
                 final = st.session_state.get('Data_organized')
+                print("in")
                 st.write("")
                 st.write("")
                 st.write(final)
-                data = framework.DataFrame(final, [])
+                data = framework.DataFrame(
+                    final,
+                    columns=["Company Name", "Address", "Phone Number", "LinkedIn", "Website"],
+                )
                 st.code(data.to_csv(sep='\t', index=False, quoting=1), language="text")
         
     except ValueError:
