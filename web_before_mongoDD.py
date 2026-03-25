@@ -1,4 +1,4 @@
-﻿import streamlit as st
+import streamlit as st
 import pdfplumber as reader
 import googlemaps
 import json
@@ -201,8 +201,45 @@ else:
                 st.write("")
                 st.write("")
                 st.write(final)
-                data = framework.DataFrame(final, [])
-                st.code(data.to_csv(sep='\t', index=False, quoting=1), language="text")
-        
+                if st.session_state['main_password_active']:
+                    st.session_state['old_data'] = []
+                    with open("data.json", "r") as file:
+                        st.session_state['old_data'] = json.load(file)
+                else:
+                    st.write("Password incorrect data not assecible")
+                print("I exited the password_entry")
+                
+                if st.session_state.get('main_password_active'):
+                    old_data = st.session_state.get('old_data', [])
+                    final = st.session_state.get('Data_organized')
+                    print(final)
+                    print(old_data)
+                    augment = st.text_input("do you 'Update' or 'Clear' old data:")
+                    if augment:
+                        st.session_state['augment_action'] = augment
+                    
+                    if st.session_state.get('augment_action'):
+                        augment = st.session_state.get('augment_action')
+                        final = st.session_state.get('Data_organized')
+                        old_data = st.session_state.get('old_data', [])
+                        
+                        if augment == "Update":
+                            first_elements_current_list = {row[0].lower() for row in final}
+                            print(first_elements_current_list)
+                            for i in range(len(old_data)):
+                                if old_data[i][0].lower() not in first_elements_current_list:
+                                    final.append(old_data[i])
+                            st.write("Data retrieve and updated with new info")
+                        else:
+                            st.write("Data cleared")
+                        with open("data.json", "w") as file:
+                            json.dump(final, file, indent=4)
+                        
+                        st.write("")
+                        st.write("")
+                        data = framework.DataFrame(st.session_state.get('Data_organized', []))
+                        st.code(data.to_csv(sep='\t', index=False, quoting=1), language="text")
+                        st.write("Succesfulley updated JSON")
+
     except ValueError:
         st.write("Please enter valid numbers for pages")
