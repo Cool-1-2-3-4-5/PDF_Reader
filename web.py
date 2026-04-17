@@ -34,9 +34,16 @@ def get_user_credentials():
             st.write("Key is invalid or error occurred, Gemini integration will not work")
     
     uploaded_file = st.file_uploader("Upload your PDF file (Only 1 file)", type="pdf")
+    st.session_state['file'] = uploaded_file
     return gemini_key, uploaded_file
-
+   
 gemini_key, uploaded_file = get_user_credentials()
+
+if st.session_state.get('file'):
+    if st.button("Change file"):
+        for key in ['PROCESSED','entries_confirmed','starting_page','ending_page','pages_confirmed','starting_entrie', 'ending_entrie', 'preview_data', 'table_data', 'order_array', 'mainList', 'Data_organized', 'cached_keywords_maps']:
+            if key in st.session_state:
+                del st.session_state[key]
 
 if not gemini_key:
     st.warning("Please enter your Gemini API Key")
@@ -50,6 +57,7 @@ loc = uploaded_file
 
 keywords = st.text_input("Enter what words you wanna have followed by comma:")
 keywords = keywords.split(",")
+st.session_state['keywords'] = True
 st.write(keywords)
 
 mainList = []
@@ -77,26 +85,63 @@ ending_page = st.number_input(
     step=1,
 )
 
-if st.button("OK Pages"):
-    if ending_page != 0 and ending_page < starting_page:
-        st.write("Invalid. Starting page must be less than or equal to ending page")
-    else:
-        effective_ending_page = ending_page if ending_page != 0 else total_pages
-        st.session_state['starting_page'] = int(starting_page)
-        st.session_state['ending_page'] = int(effective_ending_page)
-        st.session_state['pages_confirmed'] = True
-        st.session_state['entries_confirmed'] = False
-        with reader.open(loc) as pdf:
-            page_obj = pdf.pages[int(starting_page) - 1]
-            data = page_obj.extract_table()
-            for entrie in data:
-                rowList = []
-                for line in entrie:
-                    line = str(line).replace("\n",", ")
-                    rowList.append(line)
-                mainList.append(rowList)
-            st.session_state['preview_data'] = mainList
-            st.session_state['table_data'] = data
+if not st.session_state.get('pages_confirmed'):
+    if st.button("OK Pages"):
+        if ending_page != 0 and ending_page < starting_page:
+            st.write("Invalid. Starting page must be less than or equal to ending page")
+        else:
+            if ending_page != 0:
+                effective_ending_page = ending_page
+            else:
+                effective_ending_page = total_pages
+            st.session_state['starting_page'] = int(starting_page)
+            st.session_state['ending_page'] = int(effective_ending_page)
+            st.session_state['pages_confirmed'] = True
+            st.session_state['entries_confirmed'] = False
+            with reader.open(loc) as pdf:
+                page_obj = pdf.pages[int(starting_page) - 1]
+                data = page_obj.extract_table()
+                for entrie in data:
+                    rowList = []
+                    for line in entrie:
+                        line = str(line).replace("\n",", ")
+                        rowList.append(line)
+                    mainList.append(rowList)
+                st.session_state['preview_data'] = mainList
+                st.session_state['table_data'] = data
+else:
+    if st.button("Change Pages"):
+        if ending_page != 0 and ending_page < starting_page:
+            st.write("Invalid. Starting page must be less than or equal to ending page")
+        else:
+            st.session_state['entries_confirmed'] = False
+            st.session_state['PROCESSED'] = False
+            st.session_state['gemini_output'] = False
+            st.session_state['maps_key_validated'] = False
+            
+            # Delete downstream states
+            for key in ['starting_entrie', 'ending_entrie', 'preview_data', 'table_data', 'order_array', 'mainList', 'Data_organized', 'cached_keywords_maps']:
+                if key in st.session_state:
+                    del st.session_state[key]
+            if ending_page != 0:
+                effective_ending_page = ending_page
+            else:
+                effective_ending_page = total_pages
+            st.session_state['starting_page'] = int(starting_page)
+            st.session_state['ending_page'] = int(effective_ending_page)
+            st.session_state['pages_confirmed'] = True
+            with reader.open(loc) as pdf:
+                page_obj = pdf.pages[int(starting_page) - 1]
+                data = page_obj.extract_table()
+                for entrie in data:
+                    rowList = []
+                    for line in entrie:
+                        line = str(line).replace("\n",", ")
+                        rowList.append(line)
+                    mainList.append(rowList)
+                st.session_state['preview_data'] = mainList
+                st.session_state['table_data'] = data
+
 
 if st.session_state.get('pages_confirmed') and 'preview_data' in st.session_state:
     starting_page = st.session_state.get('starting_page')
@@ -107,19 +152,27 @@ if st.session_state.get('pages_confirmed') and 'preview_data' in st.session_stat
     st.write("")
     st.write("")
 
-    starting_entrie = st.number_input("Based on this preview, which entrie would you like to start with?", min_value=1, value=1)
-    ending_entrie = st.number_input("Based on this preview, which entrie would you like to end with. If no preference please enter 0", min_value=0, value=0)
+    if not st.session_state.get('entries_confirmed'):
+        starting_entrie = st.number_input("Based on this preview, which entrie would you like to start with?", min_value=1, value=1)
+        ending_entrie = st.number_input("Based on this preview, which entrie would you like to end with. If no preference please enter 0", min_value=0, value=0)
 
-    if st.button("OK Entries"):
-        if ending_entrie != 0 and ending_entrie < starting_entrie:
-            st.write("invalid. Starting number must be less than ending number and ending number must fit between domain of data")
-        elif ending_entrie > len(st.session_state.get('table_data', [])):
-            st.write("invalid. Starting number must be less than ending number and ending number must fit between domain of data")
-        else:
-            st.session_state['starting_entrie'] = int(starting_entrie)
-            st.session_state['ending_entrie'] = int(ending_entrie)
-            st.session_state['entries_confirmed'] = True
+        if st.button("OK Entries"):
+            if ending_entrie != 0 and ending_entrie < starting_entrie:
+                st.write("invalid. Starting number must be less than ending number and ending number must fit between domain of data")
+            elif ending_entrie > len(st.session_state.get('table_data', [])):
+                st.write("invalid. Starting number must be less than ending number and ending number must fit between domain of data")
+            else:
+                st.session_state['starting_entrie'] = int(starting_entrie)
+                st.session_state['ending_entrie'] = int(ending_entrie)
+                st.session_state['entries_confirmed'] = True
+    else:
+        if st.button("Change Entries"):
+            for key in ['PROCESSED','preview_data', 'table_data', 'order_array', 'mainList', 'Data_organized', 'cached_keywords_maps']:
+                if key in st.session_state:
+                    del st.session_state[key]
+            st.session_state['entries_confirmed'] = False
 
+        
     if st.session_state.get('entries_confirmed') and (st.button("Process Companies") or "PROCESSED" in st.session_state):
         st.session_state['PROCESSED'] = True
         mainList = []

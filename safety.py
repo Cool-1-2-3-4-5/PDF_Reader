@@ -91,6 +91,11 @@ Text:
         response = client.models.generate_content(
             model='gemini-2.0-flash',
             contents=prompt,
+            config={
+                'temperature': 0,  # Deterministic output
+                'top_p': 0.95,
+                'top_k': 40,
+            }
         )
         return text_cleaner(response.text)
     except Exception:
@@ -180,6 +185,11 @@ def analyseDataGeminiWeb(prompt, data, api_key):
         response = client.models.generate_content(
             model='gemini-2.0-flash',
             contents=full_promt,
+            config={
+                'temperature': 0,  # Deterministic output - no randomness
+                'top_p': 0.95,
+                'top_k': 40,
+            }
         )
         return response, False
     except Exception as exit:

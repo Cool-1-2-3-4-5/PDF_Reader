@@ -91,6 +91,11 @@ Text:
         response = client.models.generate_content(
             model='gemini-2.0-flash',
             contents=prompt,
+            config={
+                'temperature': 0,  # Deterministic output
+                'top_p': 0.95,
+                'top_k': 40,
+            }
         )
         return text_cleaner(response.text)
     except Exception:
@@ -106,24 +111,26 @@ def orderganizeData(reorderedList, rawData,maps_api):
             if len(main_List) != 0: # google maps worked
                 tempList = main_List
                 print("WORKED")
+            print(company_info)
+            print(main_List)
             print(company_info[reorderedList[0]])
+            print("here")
             print(tempList)
             print(reorderedList)
+            print("after")
             for column_entrie in range(len(reorderedList)):
                 if reorderedList[column_entrie] == -1 and tempList[column_entrie] == "-1": # not in data or google maps
                     print("MAPS: " + str(column_entrie))
                     tempList[column_entrie] = search(str(company_info[reorderedList[0]]), column_entrie)
-                elif reorderedList[column_entrie] == -1 and tempList[column_entrie] != -1: #  not in data but in google maps
-                    pass
-                else: #  in data but not in google maps OR in data and in google maps
-                    tempList[column_entrie] = company_info[reorderedList[column_entrie]]
+                elif tempList[column_entrie] == "-1" and reorderedList[column_entrie] != -1: #  in data but not in google maps OR in data and in google maps
+                    tempList[column_entrie] = "In Data"
         else: # KEY unavlible
             for column_entrie in range(len(reorderedList)):
                 if reorderedList[column_entrie] == -1: # not in data or google maps
                     print("DDGS: " + str(column_entrie))
                     tempList[column_entrie] = search(str(company_info[reorderedList[0]]), column_entrie)
                 else: #  in data 
-                    tempList[column_entrie] = company_info[reorderedList[column_entrie]]
+                    tempList[column_entrie] = "NEED TO FIND"
         finalUpdatedList.append(tempList)
     return finalUpdatedList
 
@@ -212,6 +219,11 @@ def analyseDataGeminiWeb(prompt, data, api_key):
         response = client.models.generate_content(
             model='gemini-2.0-flash',
             contents=full_promt,
+            config={
+                'temperature': 0,  # Deterministic output - no randomness
+                'top_p': 0.95,
+                'top_k': 40,
+            }
         )
         return response, False
     except Exception as exit:
