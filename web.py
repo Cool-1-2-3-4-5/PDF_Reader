@@ -202,8 +202,84 @@ if st.session_state.get("keywords_valid"):
 
             final = []
             if len(mainList) > 0:
+                keywords = st.session_state.get('keywords')
                 if "gemini_output" not in st.session_state or st.session_state.get('cached_keywords') != keywords:
-                    gemini_output, TimedOut = analyseDataGeminiWeb("Here is a company entry, based on this entry Find where the CompanyName, Address, Phone number, Linkedid, and Website are located. I might give you more than 5 or less than 5 entries. Return a 1D JSON format array with the number corresponding to place where that information is found in the entrie: Example if Phone number is on 6 column in the raw data, then return 5 in 4th index of array. Start at 0. If any of these info is not found return -1 for that entrie. Your ouput hould only be that array no talking", mainList[0], gemini_key)
+                    gemini_prompt = """You are analyzing a company database entry. The data may be formatted as:
+- Separate lines (one field per line)
+- Comma-separated values
+- Space-separated values
+- Mixed/messy format
+
+YOUR PRIMARY TASK: Identify the COMPANY NAME first (most important field). Then return column INDEX (0-based) for:
+1. Company Name (names with Corp, Inc, Ltd, LLC, Company, Solutions, Tech, Group, etc.)
+2. Address (street, city, postal code, state, country)
+3. Phone Number (patterns like (XXX)XXX-XXXX, XXX-XXX-XXXX, +X-XXX-XXXX, ext., extension)
+4. LinkedIn (URLs with linkedin.com, LinkedIn ID, or profile links)
+5. Website URL (http/https or domain.com, .io, .net, .org patterns)
+
+RESPONSE FORMAT: Return ONLY a JSON array with exactly 5 integers. Return -1 if a field is completely absent.
+Example: [0, 1, 3, 2, 4]
+
+EXAMPLES:
+
+Example 1 - Separate lines (each element on own line):
+Input:
+Acme Corp
+123 Main St
+555-1234
+linkedin.com/company/acme
+acme.com
+Output: [0, 1, 2, 3, 4]
+
+Example 2 - Single entry, company name critical:
+Input:
+Acme Corporation | 456 Oak Avenue | (333) 555-2222 | linkedin.com/acme | acme.com
+Output: [0, 1, 2, 3, 4]
+
+Example 3 - Reordered with company identifier in middle:
+Input:
+(444) 555-3333
+www.globaltech.io
+GlobalTech Solutions Inc
+789 Park Lane, Denver CO
+linkedin.com/company/globaltech
+Output: [2, 3, 0, 4, 1]
+
+Example 4 - Missing LinkedIn:
+Input:
+Tech Solutions Ltd
+456 Oak Ave, NY
+(222) 555-9876
+Not provided
+www.techsol.com
+Output: [0, 1, 2, -1, 4]
+
+Example 5 - Messy single line (identify company name first):
+Input:
+ABC Industries | Phone: (555) 888-2222 | Address: 123 Commerce St | Web: abcindustries.com | No LinkedIn
+Output: [0, 2, 1, -1, 3]
+
+Example 6 - Company name among numbers (company is identifiable):
+Input:
+Email: contact@xyz.com
+555-6666
+123 Business Plaza
+XYZ Solutions
+linkedin.com/company/xyz-solutions
+Output: [3, 2, 1, 4, -1]
+
+CRITICAL RULES:
+- PRIORITY: Always identify Company Name FIRST - it's the anchor point
+- Return ONLY the JSON array, NO other text
+- Company identifiers: Corp, Inc, Ltd, LLC, Company, Solutions, Tech, Group, Industries, Services, Global, International, etc.
+- If company name is ambiguous between multiple candidates, pick the one containing business-type keywords
+- Phone: Look for digits with () or - or ext/extension
+- Website: Ends with domain extension (.com, .io, .net, .org, etc.) or starts with http/www
+- LinkedIn: Contains "linkedin" or profile link patterns
+- Address: Contains street patterns (St, Ave, Blvd, Road, Lane, etc.) or city/state indicators
+- If a field appears messy/unclear, still identify its column index (-1 ONLY if completely missing)
+"""
+                    gemini_output, TimedOut = analyseDataGeminiWeb(gemini_prompt, mainList[0], gemini_key)
                     if not TimedOut:
                         print("Gemini Entered")
                         order_array = text_cleaner(gemini_output.text)
