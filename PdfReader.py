@@ -202,7 +202,7 @@ def search(prompt, column):
     result = DDGS().text((prompt + additional), region='wt-wt', backend='api', max_results=5)
     if result:
         phone_pattern_first_check = r"(\+?\d{1,2}\s?)?(\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4})"
-        phone_pattern_second_check = re.compile("""
+        phone_pattern_second_check = re.compile(r"""
         (\+1\ ?)? # optional +1 and space
         \(?       # optional (
         [0-9]{3}
