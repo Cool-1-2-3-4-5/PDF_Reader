@@ -104,64 +104,98 @@ Text:
 
 def orderganizeData(reorderedList, rawData,maps_api):
     finalUpdatedList = []
+    if not rawData:
+        return finalUpdatedList
+    
     for company_info in rawData:
         tempList = ["-1", "-1", "-1", "-1", "-1"]
-        if maps_api != "DDGS":
-            main_List = maps_search(str(company_info[reorderedList[0]]),maps_api)
+        
+        if not company_info or len(company_info) == 0:
+            finalUpdatedList.append(tempList)
+            continue
+        
+        try:
+            # Safely get company name
+            if reorderedList[0] != -1 and reorderedList[0] < len(company_info):
+                company_name = str(company_info[reorderedList[0]])
+            else:
+                company_name = str(company_info[0])
+        except (IndexError, TypeError):
+            company_name = "Unknown/Error"
+        if company_name == "Unknown/Error":
+            pass
+        elif maps_api != "DDGS":
+            main_List,maps_api_issue = maps_search(company_name, maps_api)
+
             if len(main_List) != 0: # google maps worked
                 tempList = main_List
                 print("WORKED")
             print(company_info)
             print(main_List)
-            print(company_info[reorderedList[0]])
             print("here")
             print(tempList)
             print(reorderedList)
             print("after")
-            for column_entrie in range(len(reorderedList)):
-                if reorderedList[column_entrie] == -1 and tempList[column_entrie] == "-1": # not in data or google maps
-                    print("MAPS: " + str(column_entrie))
-                    tempList[column_entrie] = search(str(company_info[reorderedList[0]]), column_entrie)
-                elif tempList[column_entrie] == "-1" and reorderedList[column_entrie] != -1: #  in data but not in google maps OR in data and in google maps
-                    tempList[column_entrie] = "In Data"
-        else: # KEY unavlible
+            if company_info != main_List:
+                for column_entrie in range(len(reorderedList)):
+                    if reorderedList[column_entrie] == -1 and tempList[column_entrie] == "-1": # not in data or google maps
+                        print("MAPS: " + str(column_entrie))
+                        tempList[column_entrie] = search(company_name, column_entrie)
+                    elif tempList[column_entrie] == "-1" and reorderedList[column_entrie] != -1: #  in data but not in google maps OR in data and in google maps
+                        tempList[column_entrie] = "In Data"
+            else:
+                tempList = ["COULD NOT FIND: ", str(company_info), "", "", ""]
+            if maps_api_issue == "Untrieble":
+                tempList.append("All Data was not found through Maps API")
+            elif maps_api_issue == "Error":
+                tempList.append("Maps API does not work")
+            else:
+                tempList.append("")
+        else: # KEY unavailable
             for column_entrie in range(len(reorderedList)):
                 if reorderedList[column_entrie] == -1: # not in data or google maps
                     print("DDGS: " + str(column_entrie))
-                    tempList[column_entrie] = search(str(company_info[reorderedList[0]]), column_entrie)
+                    # Use company_name instead which was safely retrieved earlier
+                    tempList[column_entrie] = search(company_name, column_entrie)
                 else: #  in data 
                     tempList[column_entrie] = "NEED TO FIND"
         finalUpdatedList.append(tempList)
     return finalUpdatedList
 
 def maps_search(company_name,api_key):
-    maps_access = googlemaps.Client(api_key)
-    results = maps_access.find_place(input = company_name,input_type="textquery")
-    if results:
-        details = maps_access.place(results['candidates'][0]['place_id'])
-        full_list = []
-        if 'name' in details['result']:
-            full_list.append(details['result']['name'])
+    try:
+        maps_access = googlemaps.Client(api_key)
+        results = maps_access.find_place(input = company_name,input_type="textquery")
+        if results and results.get('candidates') and len(results['candidates']) > 0:
+            details = maps_access.place(results['candidates'][0]['place_id'])
+            if 'result' not in details:
+                return [company_name], "Untrieble"
+            full_list = []
+            if 'name' in details['result']:
+                full_list.append(details['result']['name'])
+            else:
+                full_list.append("-1")
+            if 'vicinity' in details['result']:
+                full_list.append(details['result']['vicinity'])
+            else:
+                full_list.append("-1")
+            if 'international_phone_number' in details['result']:
+                num = (details['result']['international_phone_number']).replace("+","")
+                print(num)
+                full_list.append(num)
+            else:
+                full_list.append("-1")
+            full_list.append("-1") # LinkinIn
+            if 'website' in details['result']:
+                full_list.append(details['result']['website'])
+            else:
+                full_list.append("-1")
+            return full_list, "Good"
         else:
-            full_list.append("-1")
-        if 'vicinity' in details['result']:
-            full_list.append(details['result']['vicinity'])
-        else:
-            full_list.append("-1")
-        if 'international_phone_number' in details['result']:
-            num = (details['result']['international_phone_number']).replace("+","")
-            print(num)
-            full_list.append(num)
-        else:
-            full_list.append("-1")
-        full_list.append("-1") # LinkinIn
-        if 'website' in details['result']:
-            full_list.append(details['result']['website'])
-        else:
-            full_list.append("-1")
-        return full_list
-    else:
-        return []
+            return [company_name], "Untrieble"
+    except Exception as e:
+        print(f"Error in maps_search: {e}")
+        return [company_name], "Error"
 
 
 def search(prompt, column):
@@ -191,6 +225,8 @@ def search(prompt, column):
         """, flags=re.VERBOSE)
         if column == 2:
             for option in result:
+                if "body" not in option:
+                    continue
                 phone_number = option["body"]
                 match = re.search(phone_pattern_first_check, phone_number)
                 if match:
@@ -202,13 +238,18 @@ def search(prompt, column):
             return None
         elif column == 4:
             for option in result:
+                if "href" not in option:
+                    continue
                 company_link = option["href"]
                 company_link = company_link.lower()
                 if ("wikipedia" not in company_link) and ("facebook" not in company_link) and ("instagram" not in company_link):
                     return company_link
             return None
         else:
-            return result[0]["href"]
+            if result and len(result) > 0 and "href" in result[0]:
+                return result[0]["href"]
+            else:
+                return None
 
 
 def analyseDataGeminiWeb(prompt, data, api_key):
@@ -231,6 +272,12 @@ def analyseDataGeminiWeb(prompt, data, api_key):
 
 
 def text_cleaner(raw_text):
-    match = re.search(r'\[.*\]', raw_text, re.DOTALL)
-    final_array = json.loads(match.group(0))
-    return final_array
+    try:
+        match = re.search(r'\[.*\]', raw_text, re.DOTALL)
+        if not match:
+            return []
+        final_array = json.loads(match.group(0))
+        return final_array
+    except Exception as e:
+        print(f"Error parsing JSON in text_cleaner: {e}")
+        return []

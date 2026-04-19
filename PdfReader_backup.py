@@ -1,5 +1,7 @@
 ﻿from google import genai
 import pdfplumber as reader
+import os
+import googlemaps
 import re
 import os
 import json
@@ -8,35 +10,198 @@ from ddgs import DDGS
 load_dotenv()
 
 
-gemini_key = os.getenv('GEMINI_KEY')
-file_name = os.getenv('FILE_NAME')
+def extract_table_robust(page):
+    
+    #Try multiple methods to extract table data from a PDF page.
+    #Returns a list of rows, or None if no data found.
+    
+    # Method 1: Try standard table extraction
+    table = page.extract_table()
+    if table and len(table) > 0:
+        return table
+    
+    # Method 2: Try extracting all tables and merge them
+    tables = page.extract_tables()
+    if tables and len(tables) > 0:
+        merged = []
+        for t in tables:
+            if t:
+                merged.extend(t)
+        if merged:
+            return merged
+    
+    # Method 3: Try with different table settings for borderless tables
+    table_settings = {
+        "vertical_strategy": "text",
+        "horizontal_strategy": "text",
+        "snap_tolerance": 5,
+        "join_tolerance": 5,
+    }
+    table = page.extract_table(table_settings)
+    if table and len(table) > 0:
+        return table
+    
+    # Method 4: Try with lines-based detection
+    table_settings_lines = {
+        "vertical_strategy": "lines",
+        "horizontal_strategy": "lines",
+    }
+    table = page.extract_table(table_settings_lines)
+    if table and len(table) > 0:
+        return table
+    
+    # Method 5: Fall back to text extraction and parse into rows
+    text = page.extract_text()
+    if text:
+        lines = text.strip().split('\n')
+        # Try to split each line by common delimiters
+        parsed_rows = []
+        for line in lines:
+            if line.strip():
+                # Try tab first, then multiple spaces
+                if '\t' in line:
+                    row = line.split('\t')
+                elif '  ' in line:  # Multiple spaces
+                    row = re.split(r'\s{2,}', line)
+                else:
+                    row = [line]
+                parsed_rows.append(row)
+        if parsed_rows:
+            return parsed_rows
+    
+    return None
 
-client = None
-if gemini_key:
-    client = genai.Client(api_key=gemini_key)
 
-def text_cleaner(raw_text):
-    match = re.search(r'\[.*\]', raw_text, re.DOTALL)
-    final_array = json.loads(match.group(0))
-    return final_array
+def extract_with_ai_fallback(page, api_key):
+    # Use AI to extract structured data from raw PDF text when table extraction fails.
+    text = page.extract_text()
+    if not text:
+        return None
+    
+    client = genai.Client(api_key=api_key)
+    prompt = """Extract company information from this text and return as a JSON array of arrays.
+Each inner array should contain columns of data found in the text.
+If the text appears to be tabular data, preserve the row/column structure.
+Return ONLY the JSON array, no explanation.
 
-def orderganizeData(reorderedList,rawData):
+Text:
+""" + text
+    
+    try:
+        response = client.models.generate_content(
+            model='gemini-2.0-flash',
+            contents=prompt,
+            config={
+                'temperature': 0,  # Deterministic output
+                'top_p': 0.95,
+                'top_k': 40,
+            }
+        )
+        return text_cleaner(response.text)
+    except Exception:
+        return None
+
+
+def orderganizeData(reorderedList, rawData,maps_api):
     finalUpdatedList = []
-    for company in rawData:
-        tempList = ["0","0","0","0","0"]
-        for column_entrie in range(len(reorderedList)):
-            if reorderedList[column_entrie] == -1:
-                tempList[column_entrie] = search(str(company[reorderedList[0]]),column_entrie)
-                pass
+    if not rawData:
+        return finalUpdatedList
+    
+    for company_info in rawData:
+        tempList = ["-1", "-1", "-1", "-1", "-1"]
+        
+        if not company_info or len(company_info) == 0:
+            finalUpdatedList.append(tempList)
+            continue
+        
+        try:
+            # Safely get company name
+            if reorderedList[0] != -1 and reorderedList[0] < len(company_info):
+                company_name = str(company_info[reorderedList[0]])
             else:
-                tempList[column_entrie] = company[reorderedList[column_entrie]]
+                company_name = str(company_info[0])
+        except (IndexError, TypeError):
+            company_name = "Unknown/Error"
+        if company_name == "Unknown/Error":
+            pass
+        elif maps_api != "DDGS":
+            main_List,maps_api_issue = maps_search(company_name, maps_api)
+
+            if len(main_List) != 0: # google maps worked
+                tempList = main_List
+                print("WORKED")
+            print(company_info)
+            print(main_List)
+            print("here")
+            print(tempList)
+            print(reorderedList)
+            print("after")
+            if company_info != main_List:
+                for column_entrie in range(len(reorderedList)):
+                    if reorderedList[column_entrie] == -1 and tempList[column_entrie] == "-1": # not in data or google maps
+                        print("MAPS: " + str(column_entrie))
+                        tempList[column_entrie] = search(company_name, column_entrie)
+                    elif tempList[column_entrie] == "-1" and reorderedList[column_entrie] != -1: #  in data but not in google maps OR in data and in google maps
+                        tempList[column_entrie] = "In Data"
+            else:
+                tempList = ["COULD NOT FIND: ", str(company_info), "", "", ""]
+            if maps_api_issue == "Untrieble":
+                tempList.append("All Data was not found through Maps API")
+            elif maps_api_issue == "Error":
+                tempList.append("Maps API does not work")
+            else:
+                tempList.append("")
+        else: # KEY unavailable
+            for column_entrie in range(len(reorderedList)):
+                if reorderedList[column_entrie] == -1: # not in data or google maps
+                    print("DDGS: " + str(column_entrie))
+                    # Use company_name instead which was safely retrieved earlier
+                    tempList[column_entrie] = search(company_name, column_entrie)
+                else: #  in data 
+                    tempList[column_entrie] = "NEED TO FIND"
         finalUpdatedList.append(tempList)
     return finalUpdatedList
 
-def search(prompt,column):
+def maps_search(company_name,api_key):
+    try:
+        maps_access = googlemaps.Client(api_key)
+        results = maps_access.find_place(input = company_name,input_type="textquery")
+        if results and results.get('candidates') and len(results['candidates']) > 0:
+            details = maps_access.place(results['candidates'][0]['place_id'])
+            if 'result' not in details:
+                return [company_name], "Untrieble"
+            full_list = []
+            if 'name' in details['result']:
+                full_list.append(details['result']['name'])
+            else:
+                full_list.append("-1")
+            if 'vicinity' in details['result']:
+                full_list.append(details['result']['vicinity'])
+            else:
+                full_list.append("-1")
+            if 'international_phone_number' in details['result']:
+                num = (details['result']['international_phone_number']).replace("+","")
+                print(num)
+                full_list.append(num)
+            else:
+                full_list.append("-1")
+            full_list.append("-1") # LinkinIn
+            if 'website' in details['result']:
+                full_list.append(details['result']['website'])
+            else:
+                full_list.append("-1")
+            return full_list, "Good"
+        else:
+            return [company_name], "Untrieble"
+    except Exception as e:
+        print(f"Error in maps_search: {e}")
+        return [company_name], "Error"
+
+
+def search(prompt, column):
     additional = ""
     if column == 1:
-        additional = " address -site:yelp.com"
+        additional = " site:google.com/maps"
     elif column == 2:
         additional = " Phone Number"
     elif column == 3:
@@ -44,203 +209,75 @@ def search(prompt,column):
     elif column == 4:
         additional = " -site:wikipedia.org -site:facebook.com -site:instagram.com"
     else:
-        pass         
-    result = DDGS().text((prompt+additional),region='wt-wt',backend='api',max_results=5)
+        pass
+    result = DDGS().text((prompt + additional), region='wt-wt', backend='api', max_results=5)
     if result:
         phone_pattern_first_check = r"(\+?\d{1,2}\s?)?(\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4})"
         phone_pattern_second_check = re.compile("""
-(\+1\ ?)? # optional +1 and space
-\(?       # optional (
-[0-9]{3}
-\)?       # optional )
-[- ]?     # optional - or space
-[0-9]{3}
--?        # optional -
-[0-9]{4}
-""", flags = re.VERBOSE)
-        company_pattern = "www"
+        (\+1\ ?)? # optional +1 and space
+        \(?       # optional (
+        [0-9]{3}
+        \)?       # optional )
+        [- ]?     # optional - or space
+        [0-9]{3}
+        -?        # optional -
+        [0-9]{4}
+        """, flags=re.VERBOSE)
         if column == 2:
             for option in result:
+                if "body" not in option:
+                    continue
                 phone_number = option["body"]
-                # print(phone_number + "\n")
                 match = re.search(phone_pattern_first_check, phone_number)
                 if match:
-                    possible_number = match.group(0).strip() 
+                    possible_number = match.group(0).strip()
                     numbers = phone_pattern_second_check.findall(possible_number)
                     if numbers:
+                        possible_number = possible_number.replace("o","")
                         return possible_number
             return None
-        elif column == 4: #company website
-            # for option in result:
-                # print(option["href"])
+        elif column == 4:
             for option in result:
+                if "href" not in option:
+                    continue
                 company_link = option["href"]
-                # print(company_link)
                 company_link = company_link.lower()
                 if ("wikipedia" not in company_link) and ("facebook" not in company_link) and ("instagram" not in company_link):
                     return company_link
             return None
         else:
-            return result[0]["href"]
-            
+            if result and len(result) > 0 and "href" in result[0]:
+                return result[0]["href"]
+            else:
+                return None
 
-def analyseDataGemini(prompt, data, api_key=None):
-    if api_key:
-        c = genai.Client(api_key=api_key)
-    else:
-        c = client
-    if not c:
-        return None, True
+
+def analyseDataGeminiWeb(prompt, data, api_key):
+    client = genai.Client(api_key=api_key)
     formatted_data = "\n".join([str(row) for row in data])
     full_promt = prompt + "\n Here is the formatted data: " + formatted_data
     try:
-        response = c.models.generate_content(
-            model='gemini-2.0-flash', 
+        response = client.models.generate_content(
+            model='gemini-2.0-flash',
             contents=full_promt,
+            config={
+                'temperature': 0,  # Deterministic output - no randomness
+                'top_p': 0.95,
+                'top_k': 40,
+            }
         )
         return response, False
     except Exception as exit:
         return None, True
 
 
-if __name__ == "__main__":
-    if not gemini_key or not file_name:
-        missing = []
-        if not gemini_key:
-            missing.append("GEMINI_KEY")
-        if not file_name:
-            missing.append("FILE_NAME")
-        raise SystemExit("Missing required environment variables: " + ", ".join(missing))
-    
-    loc = file_name
-keywords = input("Enter what words you wanna have followed by comma: ")
-keywords = keywords.split(",")
-print(keywords)
-mainList = []
-
-page = input("Enter what page you want to start, followed by a comma, what page you want to end: ").split(",")
-while len(page) != 2 or int(page[0]) <= 0 or int(page[1]) <= 0:
-    print("Try Again, incorrect values or format")
-    page = input("Enter what page you want to start, followed by a comma, what page you want to end: ").split(",")
-starting_page = int(page[0])
-ending_page = int(page[1])
-
-with reader.open(loc) as pdf:
-    # Use for Preview
-    page = pdf.pages[starting_page-1]
-    data = page.extract_table()
-    for entrie in data:
-        rowList = []
-        for line in entrie: # cleaning up
-            line = str(line).replace("\n",", ")
-            rowList.append(line)
-        mainList.append(rowList)
-    for entrie in mainList: # cleaning up
-        print(entrie)
-    print("\n\n\n\n\n\n\n")
-    starting_entrie = int(input("Based on this preview, which entrie would you like to start with?: "))
-    ending_entrie = int(input("Based on this preview, which entrie would you like to end with. If no preference please enter 0?: "))
-    while (ending_entrie < starting_entrie and ending_entrie != 0) or ending_entrie > len(data) :
-        print("invalid. Starting number must be less than ending number adn ending number must fit between domain of data")
-        starting_entrie = int(input("Based on this preview, which entrie would you like to start with?: "))
-        ending_entrie = int(input("Based on this preview, which entrie would you like to end with. If no preference please enter 0?: "))
-    
-    # Automation
-    mainList = []
-    for page in pdf.pages[starting_page-1:ending_page-1]:
-        data = page.extract_table()
-        for entrie in data[starting_entrie-1:ending_entrie-1]:
-            rowList = []
-            for line in entrie: # cleaning up
-                line = str(line).replace("\n",", ")
-                rowList.append(line)
-            for word in keywords:
-                for line in rowList:
-                    if word.lower() in str(line).lower():
-                        mainList.append(rowList)
-                        break
-        rowList = []
-    
-    print(mainList)
-    print("\n\n\n\n\n\n\n")
-    final= []
-if len(mainList) > 0:
-    gemini_output,TimedOut = analyseDataGemini("Here is a company entry, based on this entry Find where the CompanyName, Address, Phone number, Linkedid, and Website are located. I might give you more than 5 or less than 5 entries. Return a 1D JSON format array with the number corresponding to place where that information is found in the entrie: Example if Phone number is on 6 column in the raw data, then return 5 in 4th index of array. Start at 0. If any of these info is not found return -1 for that entrie. Your ouput hould only be that array no talking", mainList[0])
-    if not TimedOut:
-        order_array = text_cleaner(gemini_output.text)
-        print(order_array)
-        re_ordered_array = []
-        re_ordered_array = orderganizeData(order_array,mainList)
-        final = re_ordered_array
-else:
-    print("No companies found")
-print("\n\n\n\n\n\n\n")
-print(final)
-
-with open("data.json","w") as file:
-    json.dump(final,file,indent=4)
-
-    print("\n\n\n\n\n\n\n")
-    print("Succesfulley updated JSON")
-
-# Here is the list of columns. Analyse the data and reorder the entries to fit this order: CompanyName, Address, Phone number(If not found in the data, Replace with N/A), Linkedin(If not found in the data, Replace with N/A),  Company Website(If not found in the data, Replace with N/A). If any of this information is not retriable, write the entrie with N/A. Return your response as a JSON array of arrays (matrix format). Example: [['Company1', 'Address1', 'Phone1', 'LinkedIn1', 'Website1'], ['Company2', 'Address2', 'Phone2', 'LinkedIn2', 'Website2]]. Return ONLY the JSON array, no other text.
-
-
-
-# def analyseDataWeb(json_matrix):
-    # updated_List = []
-    # for raw_row in json_matrix:
-    #     row = list(raw_row)
-    #     company = row[0]
-    #     address = row[1]
-    #     top_results = []
-    #     try:
-    #         web_result = webscraper.search(
-    #             q=company,
-    #             engine="google",
-    #             location=address,
-    #             hl="en"
-    #         )
-    #         top_results = web_result["organic_results"]
-    #     except Exception:
-    #         top_results = []
-    #     if row[4] == "N/A" and top_results:
-    #         row[4] = top_results[0]["link"]
-    #     if row[3] == "N/A" and top_results:
-    #         for entrie in top_results[:10]:
-    #             if "linkedin" in entrie["link"].lower():
-    #                 row[3] = entrie["link"]
-    #                 break
-    #     if row[2] == "N/A":
-    #         try:
-    #             maps_result = webscraper.search(
-    #                 q=company,
-    #                 engine="google_maps",
-    #                 location=address,
-    #                 type="search"
-    #             )
-    #             maps_data = maps_result["local_results"]
-    #             if maps_data:
-    #                 row[2] = (maps_data[0])["phone"]
-    #         except Exception:
-    #             pass
-
-    #     updated_List.append(row)
-    # return updated_List
-
-
-
-
-    # for page in pdf.pages:
-    #     data = page.extract_table()
-    #     coluumn_names = data[1]
-    #     for entrie in data[2:]:
-    #         rowList = []
-    #         for line in entrie: # cleaning up
-    #             line = str(line).replace("\n",", ")
-    #             rowList.append(line)
-    #         for word in keywords:
-    #             for line in rowList:
-    #                 if (word.lower() or word.upper()) in (str(line).lower() or str(line).upper()):
-    #                     mainList.append(rowList)
-    #                     break
+def text_cleaner(raw_text):
+    try:
+        match = re.search(r'\[.*\]', raw_text, re.DOTALL)
+        if not match:
+            return []
+        final_array = json.loads(match.group(0))
+        return final_array
+    except Exception as e:
+        print(f"Error parsing JSON in text_cleaner: {e}")
+        return []

@@ -7,7 +7,7 @@ import os
 import pandas as framework
 from google import genai
 from dotenv import load_dotenv
-from PdfReader import orderganizeData, search, analyseDataGeminiWeb, text_cleaner
+from PdfReader import orderganizeData, search, analyseDataGeminiWeb, text_cleaner, extract_table_robust
 
 load_dotenv()
 
@@ -46,9 +46,11 @@ gemini_key, uploaded_file = get_user_credentials()
 
 if st.session_state.get('file'):
     if st.button("Change file"):
-        for key in ['file', 'PROCESSED','entries_confirmed','starting_page','ending_page','pages_confirmed','starting_entrie', 'ending_entrie', 'preview_data', 'table_data', 'order_array', 'mainList', 'Data_organized', 'cached_keywords_maps']:
+        # Clear everything when changing file
+        for key in ['file', 'keywords', 'keywords_valid', 'PROCESSED','entries_confirmed','starting_page','ending_page','pages_confirmed','starting_entrie', 'ending_entrie', 'preview_data', 'table_data', 'order_array', 'mainList', 'Data_organized', 'cached_keywords_maps', 'gemini_output', 'maps_key_validated']:
             if key in st.session_state:
                 del st.session_state[key]
+        st.rerun()
 
 if not gemini_key:
     st.warning("Please enter your Gemini API Key")
@@ -66,15 +68,15 @@ if not st.session_state.get('keywords'):
         st.session_state['keywords'] = keywords
         st.session_state['keywords_valid'] = True
         st.write(keywords)
-        print(keywords)
         st.rerun()
 else:
     st.write("You have selcted: " + str(st.session_state.get('keywords')))
     if st.button("Change keywords"):
-        st.session_state['keywords'] = 0
-        for key in ['keywords_valid','pages_confirmed','entries_confirmed', 'PROCESSED','gemini_output','maps_key_validated','starting_entrie', 'ending_entrie', 'preview_data', 'table_data', 'order_array', 'mainList', 'Data_organized', 'cached_keywords_maps']:
+        # Clear everything after keywords (keep file and gemini_key)
+        for key in ['keywords_valid','pages_confirmed','entries_confirmed', 'PROCESSED','gemini_output','maps_key_validated','starting_entrie', 'ending_entrie', 'preview_data', 'table_data', 'order_array', 'mainList', 'Data_organized', 'cached_keywords_maps', 'cached_keywords']:
             if key in st.session_state:
                 del st.session_state[key]
+        st.session_state['keywords'] = 0
         st.rerun()
 
 mainList = []
@@ -116,28 +118,26 @@ if st.session_state.get("keywords_valid"):
                 st.session_state['entries_confirmed'] = False
                 with reader.open(loc) as pdf:
                     page_obj = pdf.pages[int(starting_page) - 1]
-                    data = page_obj.extract_table()
-                    for entrie in data:
-                        rowList = []
-                        for line in entrie:
-                            line = str(line).replace("\n",", ")
-                            rowList.append(line)
-                        mainList.append(rowList)
-                    st.session_state['preview_data'] = mainList
-                    st.session_state['table_data'] = data
+                    data = extract_table_robust(page_obj)
+                    if data:
+                        for entrie in data:
+                            rowList = []
+                            for line in entrie:
+                                line = str(line).replace("\n",", ")
+                                rowList.append(line)
+                            mainList.append(rowList)
+                        st.session_state['preview_data'] = mainList
+                        st.session_state['table_data'] = data
+                    else:
+                        st.warning("No table data found on this page. Try different page selection.")
             st.rerun()
     else:
         st.write("Starting Page: " + str(st.session_state.get('starting_page')) + " Ending Page: " + str(st.session_state.get('ending_page')))
         if st.button("Change Pages"):
-            st.session_state['pages_confirmed'] = False
-            st.session_state['entries_confirmed'] = False
-            st.session_state['PROCESSED'] = False
-            st.session_state['gemini_output'] = False
-            st.session_state['maps_key_validated'] = False
-            # Delete downstream states
-            for key in ['starting_entrie', 'ending_entrie', 'preview_data', 'table_data', 'order_array', 'mainList', 'Data_organized', 'cached_keywords_maps']:
+            for key in ['entries_confirmed', 'PROCESSED', 'gemini_output', 'maps_key_validated', 'starting_entrie', 'ending_entrie', 'preview_data', 'table_data', 'order_array', 'mainList', 'Data_organized', 'cached_keywords_maps']:
                 if key in st.session_state:
                     del st.session_state[key]
+            st.session_state['pages_confirmed'] = False
             st.rerun()
 
 
@@ -145,8 +145,7 @@ if st.session_state.get("keywords_valid"):
         starting_page = st.session_state.get('starting_page')
         effective_ending_page = st.session_state.get('ending_page')
 
-        for entrie in st.session_state.get('preview_data', []):
-            st.write(entrie)
+        st.write(st.session_state.get('preview_data', []))
         st.write("")
         st.write("")
 
@@ -165,23 +164,23 @@ if st.session_state.get("keywords_valid"):
                     st.session_state['entries_confirmed'] = True
                 st.rerun()
         else:
+            st.write("Starting Entry: " + str(st.session_state.get('starting_entrie')) + " Ending Entry: " + str(st.session_state.get('ending_entrie')))
             if st.button("Change Entries"):
-                for key in ['PROCESSED', 'order_array', 'mainList', 'Data_organized', 'cached_keywords_maps']:
+                # Clear everything after entries (keep file, gemini_key, keywords, pages, and API key validation)
+                for key in ['PROCESSED', 'gemini_output', 'order_array', 'mainList', 'Data_organized', 'cached_keywords_maps']:
                     if key in st.session_state:
                         del st.session_state[key]
                 st.session_state['entries_confirmed'] = False
-                st.session_state['PROCESSED'] = False
                 st.rerun()
 
-            
-        if st.session_state.get('entries_confirmed') and (st.button("Process Companies") or "PROCESSED" in st.session_state):
-            st.session_state['PROCESSED'] = True
-            mainList = []
+        if st.session_state.get("entries_confirmed"):
             starting_entrie = st.session_state.get('starting_entrie')
             ending_entrie = st.session_state.get('ending_entrie')
             with reader.open(loc) as pdf:
                 for page_obj in pdf.pages[int(starting_page)-1:int(effective_ending_page)]:
-                    data = page_obj.extract_table()
+                    data = extract_table_robust(page_obj)
+                    if not data:
+                        continue
                     end_idx = ending_entrie-1 if ending_entrie != 0 else None
                     for entrie in data[starting_entrie-1:end_idx]:
                         rowList = []
@@ -195,6 +194,18 @@ if st.session_state.get("keywords_valid"):
                                     break
                         rowList = []
 
+            str_result = ""
+            st.session_state['preview_data'] = mainList
+            api_calls = len(mainList)
+            estimated_cost = api_calls * 0.024
+            st.info("Number of Companies: " + str(len(mainList)) + " | Maps API calls: " + str(2*api_calls) + " | Estimated cost: " + str(estimated_cost))
+            
+        if st.session_state.get('entries_confirmed') and (st.button("Process Companies") or "PROCESSED" in st.session_state):
+            st.session_state['PROCESSED'] = True
+            mainList = []
+            starting_entrie = st.session_state.get('starting_entrie')
+            ending_entrie = st.session_state.get('ending_entrie')
+            mainList = st.session_state['preview_data']
             str_result = ""
             st.write(mainList)
             st.write("")
@@ -281,7 +292,6 @@ CRITICAL RULES:
 """
                     gemini_output, TimedOut = analyseDataGeminiWeb(gemini_prompt, mainList[0], gemini_key)
                     if not TimedOut:
-                        print("Gemini Entered")
                         order_array = text_cleaner(gemini_output.text)
                         st.session_state['order_array'] = order_array
                         st.session_state['cached_keywords'] = keywords
@@ -310,14 +320,11 @@ CRITICAL RULES:
             order_array = st.session_state.get('order_array')
             mainList = st.session_state.get('mainList')
             keywords = st.session_state.get('cached_keywords', "")
-                        
-            print("!EN")
+            
             if not st.session_state['main_password_active']: # not DSQ
                 password_for_maps = st.text_input("MAPS API Please:", type="password")
-                print(password_for_maps)
                 if password_for_maps:
                     if 'maps_key_validated' not in st.session_state or st.session_state.get('cached_keywords_maps') != keywords:
-                        print("ENTERED")
                         try:
                             maps_access = googlemaps.Client(password_for_maps)
                             st.write("Key is valid!")
@@ -331,7 +338,6 @@ CRITICAL RULES:
                             st.session_state['Data_organized'] = re_ordered_array
                             st.session_state['maps_key_validated'] = True
                             st.session_state['cached_keywords_maps'] = keywords
-                            print("HERE")
                     else:
                         # Maps already processed for these keywords, retrieve cached data
                         pass
@@ -342,19 +348,16 @@ CRITICAL RULES:
                     st.session_state['Data_organized'] = re_ordered_array
                     st.session_state['maps_key_validated'] = True
                     st.session_state['cached_keywords_maps'] = keywords
-                    print("EXIT")
                 else:
                     # Maps already processed for these keywords, retrieve cached data
                     pass
-    print("ENTER")
     if 'Data_organized' in st.session_state:
         final = st.session_state.get('Data_organized')
-        print("in")
         st.write("")
         st.write("")
         st.write(final)
         data = framework.DataFrame(
             final,
-            columns=["Company Name", "Address", "Phone Number", "LinkedIn", "Website"],
+            columns=["Company Name", "Address", "Phone Number", "LinkedIn", "Website", "Issues"],
         )
         st.code(data.to_csv(sep='\t', index=False, quoting=1), language="text")
