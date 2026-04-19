@@ -129,17 +129,9 @@ def orderganizeData(reorderedList, rawData,maps_api):
 
             if len(main_List) != 0: # google maps worked
                 tempList = main_List
-                print("WORKED")
-            print(company_info)
-            print(main_List)
-            print("here")
-            print(tempList)
-            print(reorderedList)
-            print("after")
             if company_info != main_List:
                 for column_entrie in range(len(reorderedList)):
                     if reorderedList[column_entrie] == -1 and tempList[column_entrie] == "-1": # not in data or google maps
-                        print("MAPS: " + str(column_entrie))
                         tempList[column_entrie] = search(company_name, column_entrie)
                     elif tempList[column_entrie] == "-1" and reorderedList[column_entrie] != -1: #  in data but not in google maps OR in data and in google maps
                         tempList[column_entrie] = "In Data"
@@ -154,7 +146,6 @@ def orderganizeData(reorderedList, rawData,maps_api):
         else: # KEY unavailable
             for column_entrie in range(len(reorderedList)):
                 if reorderedList[column_entrie] == -1: # not in data or google maps
-                    print("DDGS: " + str(column_entrie))
                     # Use company_name instead which was safely retrieved earlier
                     tempList[column_entrie] = search(company_name, column_entrie)
                 else: #  in data 
@@ -181,7 +172,6 @@ def maps_search(company_name,api_key):
                 full_list.append("-1")
             if 'international_phone_number' in details['result']:
                 num = (details['result']['international_phone_number']).replace("+","")
-                print(num)
                 full_list.append(num)
             else:
                 full_list.append("-1")
@@ -194,7 +184,6 @@ def maps_search(company_name,api_key):
         else:
             return [company_name], "Untrieble"
     except Exception as e:
-        print(f"Error in maps_search: {e}")
         return [company_name], "Error"
 
 
@@ -279,5 +268,4 @@ def text_cleaner(raw_text):
         final_array = json.loads(match.group(0))
         return final_array
     except Exception as e:
-        print(f"Error parsing JSON in text_cleaner: {e}")
         return []
