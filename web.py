@@ -46,7 +46,6 @@ gemini_key, uploaded_file = get_user_credentials()
 
 if st.session_state.get('file'):
     if st.button("Change file"):
-        # Clear everything when changing file
         for key in ['file', 'keywords', 'keywords_valid', 'PROCESSED','entries_confirmed','starting_page','ending_page','pages_confirmed','starting_entrie', 'ending_entrie', 'preview_data', 'table_data', 'order_array', 'mainList', 'Data_organized', 'cached_keywords_maps', 'gemini_output', 'maps_key_validated']:
             if key in st.session_state:
                 del st.session_state[key]
@@ -62,7 +61,7 @@ if not uploaded_file:
 
 loc = uploaded_file
 if not st.session_state.get('keywords'):
-    keywords = st.text_input("Enter what words you wanna have followed by comma:")
+    keywords = st.text_input("Enter what words you want to have and follow each word with a comma:")
     if keywords:
         keywords = keywords.split(",")
         st.session_state['keywords'] = keywords
@@ -72,7 +71,6 @@ if not st.session_state.get('keywords'):
 else:
     st.write("You have selcted: " + str(st.session_state.get('keywords')))
     if st.button("Change keywords"):
-        # Clear everything after keywords (keep file and gemini_key)
         for key in ['keywords_valid','pages_confirmed','entries_confirmed', 'PROCESSED','gemini_output','maps_key_validated','starting_entrie', 'ending_entrie', 'preview_data', 'table_data', 'order_array', 'mainList', 'Data_organized', 'cached_keywords_maps', 'cached_keywords']:
             if key in st.session_state:
                 del st.session_state[key]
@@ -91,14 +89,14 @@ with reader.open(loc) as pdf:
 if st.session_state.get("keywords_valid"):
     if not st.session_state.get('pages_confirmed'):
         starting_page = st.number_input(
-            "Based on your PDF, which page would you like to start with?",
+            "Based on your PDF, what page would you like to start with?",
             min_value=1,
             max_value=total_pages,
             value=1,
             step=1,
         )
         ending_page = st.number_input(
-            "Which page would you like to end with? If no preference, enter 0",
+            "What page would you like to end with? For the last page, enter 0. Enter same first page number to only work on one page",
             min_value=0,
             max_value=total_pages,
             value=0,
@@ -151,13 +149,13 @@ if st.session_state.get("keywords_valid"):
 
         if not st.session_state.get('entries_confirmed'):
             starting_entrie = st.number_input("Based on this preview, which entrie would you like to start with?", min_value=1, value=1)
-            ending_entrie = st.number_input("Based on this preview, which entrie would you like to end with. If no preference please enter 0", min_value=0, value=0)
+            ending_entrie = st.number_input("Based on this preview, which entrie would you like to end with. For the last entrie, enter 0. Enter same first entrie number to only work on one entrie", min_value=0, value=0)
 
             if st.button("OK Entries"):
                 if ending_entrie != 0 and ending_entrie < starting_entrie:
-                    st.write("invalid. Starting number must be less than ending number and ending number must fit between domain of data")
+                    st.write("Invalid. Starting number must be less than ending number and ending number must fit between domain of data")
                 elif ending_entrie > len(st.session_state.get('table_data', [])):
-                    st.write("invalid. Starting number must be less than ending number and ending number must fit between domain of data")
+                    st.write("Invalid. Starting number must be less than ending number and ending number must fit between domain of data")
                 else:
                     st.session_state['starting_entrie'] = int(starting_entrie)
                     st.session_state['ending_entrie'] = int(ending_entrie)
@@ -166,7 +164,6 @@ if st.session_state.get("keywords_valid"):
         else:
             st.write("Starting Entry: " + str(st.session_state.get('starting_entrie')) + " Ending Entry: " + str(st.session_state.get('ending_entrie')))
             if st.button("Change Entries"):
-                # Clear everything after entries (keep file, gemini_key, keywords, pages, and API key validation)
                 for key in ['PROCESSED', 'gemini_output', 'order_array', 'mainList', 'Data_organized', 'cached_keywords_maps']:
                     if key in st.session_state:
                         del st.session_state[key]

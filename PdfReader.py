@@ -10,17 +10,13 @@ from ddgs import DDGS
 load_dotenv()
 
 
-def extract_table_robust(page):
-    
-    #Try multiple methods to extract table data from a PDF page.
-    #Returns a list of rows, or None if no data found.
-    
-    # Method 1: Try standard table extraction
+def extract_table_robust(page):   
+    # Method 1: Standard table extraction
     table = page.extract_table()
     if table and len(table) > 0:
         return table
     
-    # Method 2: Try extracting all tables and merge them
+    # Method 2: Extracting all tables and merge them
     tables = page.extract_tables()
     if tables and len(tables) > 0:
         merged = []
@@ -30,7 +26,7 @@ def extract_table_robust(page):
         if merged:
             return merged
     
-    # Method 3: Try with different table settings for borderless tables
+    # Method 3: Configure table settings for borderless tables
     table_settings = {
         "vertical_strategy": "text",
         "horizontal_strategy": "text",
@@ -41,7 +37,7 @@ def extract_table_robust(page):
     if table and len(table) > 0:
         return table
     
-    # Method 4: Try with lines-based detection
+    # Method 4: Lines-based detection
     table_settings_lines = {
         "vertical_strategy": "lines",
         "horizontal_strategy": "lines",
@@ -50,57 +46,25 @@ def extract_table_robust(page):
     if table and len(table) > 0:
         return table
     
-    # Method 5: Fall back to text extraction and parse into rows
+    # Method 5: Text extraction and parse into rows
     text = page.extract_text()
     if text:
         lines = text.strip().split('\n')
-        # Try to split each line by common delimiters
+        # Split each line
         parsed_rows = []
         for line in lines:
             if line.strip():
-                # Try tab first, then multiple spaces
+                # Tab first
                 if '\t' in line:
                     row = line.split('\t')
-                elif '  ' in line:  # Multiple spaces
+                elif '  ' in line: # Multiple spaces
                     row = re.split(r'\s{2,}', line)
                 else:
                     row = [line]
                 parsed_rows.append(row)
         if parsed_rows:
             return parsed_rows
-    
     return None
-
-
-def extract_with_ai_fallback(page, api_key):
-    # Use AI to extract structured data from raw PDF text when table extraction fails.
-    text = page.extract_text()
-    if not text:
-        return None
-    
-    client = genai.Client(api_key=api_key)
-    prompt = """Extract company information from this text and return as a JSON array of arrays.
-Each inner array should contain columns of data found in the text.
-If the text appears to be tabular data, preserve the row/column structure.
-Return ONLY the JSON array, no explanation.
-
-Text:
-""" + text
-    
-    try:
-        response = client.models.generate_content(
-            model='gemini-2.0-flash',
-            contents=prompt,
-            config={
-                'temperature': 0,  # Deterministic output
-                'top_p': 0.95,
-                'top_k': 40,
-            }
-        )
-        return text_cleaner(response.text)
-    except Exception:
-        return None
-
 
 def orderganizeData(reorderedList, rawData,maps_api):
     finalUpdatedList = []
@@ -115,26 +79,28 @@ def orderganizeData(reorderedList, rawData,maps_api):
             continue
         
         try:
-            # Safely get company name
+            # Safety
             if reorderedList[0] != -1 and reorderedList[0] < len(company_info):
                 company_name = str(company_info[reorderedList[0]])
             else:
                 company_name = str(company_info[0])
         except (IndexError, TypeError):
             company_name = "Unknown/Error"
-        if company_name == "Unknown/Error":
+        if company_name == "Unknown/Error": # Issue
             pass
         elif maps_api != "DDGS":
             main_List,maps_api_issue = maps_search(company_name, maps_api)
 
-            if len(main_List) != 0: # google maps worked
+            if len(main_List) != 0: # Google Maps worked
                 tempList = main_List
             if company_info != main_List:
                 for column_entrie in range(len(reorderedList)):
-                    if reorderedList[column_entrie] == -1 and tempList[column_entrie] == "-1": # not in data or google maps
+                    if reorderedList[column_entrie] == -1 and tempList[column_entrie] == "-1": # Not in data OR not in google maps
                         tempList[column_entrie] = search(company_name, column_entrie)
-                    elif tempList[column_entrie] == "-1" and reorderedList[column_entrie] != -1: #  in data but not in google maps OR in data and in google maps
+                    elif tempList[column_entrie] == "-1" and reorderedList[column_entrie] != -1: # In data but not in google maps OR in data and in google maps
                         tempList[column_entrie] = "In Data"
+                    else: # Nothing to change
+                        pass
             else:
                 tempList = ["COULD NOT FIND: ", str(company_info), "", "", ""]
             if maps_api_issue == "Untrieble":
@@ -143,12 +109,12 @@ def orderganizeData(reorderedList, rawData,maps_api):
                 tempList.append("Maps API does not work")
             else:
                 tempList.append("")
-        else: # KEY unavailable
+        else: # Key unavailable
             for column_entrie in range(len(reorderedList)):
-                if reorderedList[column_entrie] == -1: # not in data or google maps
-                    # Use company_name instead which was safely retrieved earlier
+                if reorderedList[column_entrie] == -1: # Not in data OR google maps
+                    # Use Company Name instead which was safely retrieved
                     tempList[column_entrie] = search(company_name, column_entrie)
-                else: #  in data 
+                else: # In data 
                     tempList[column_entrie] = "NEED TO FIND"
         finalUpdatedList.append(tempList)
     return finalUpdatedList
@@ -175,7 +141,7 @@ def maps_search(company_name,api_key):
                 full_list.append(num)
             else:
                 full_list.append("-1")
-            full_list.append("-1") # LinkinIn
+            full_list.append("-1") # LinkedIn
             if 'website' in details['result']:
                 full_list.append(details['result']['website'])
             else:
@@ -197,19 +163,19 @@ def search(prompt, column):
         additional = " site:linkedin.com/company/"
     elif column == 4:
         additional = " -site:wikipedia.org -site:facebook.com -site:instagram.com"
-    else:
+    else: # Nothing to change
         pass
     result = DDGS().text((prompt + additional), region='wt-wt', backend='api', max_results=5)
     if result:
         phone_pattern_first_check = r"(\+?\d{1,2}\s?)?(\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4})"
         phone_pattern_second_check = re.compile(r"""
-        (\+1\ ?)? # optional +1 and space
-        \(?       # optional (
+        (\+1\ ?)?
+        \(?
         [0-9]{3}
-        \)?       # optional )
-        [- ]?     # optional - or space
+        \)?
+        [- ]?
         [0-9]{3}
-        -?        # optional -
+        -?
         [0-9]{4}
         """, flags=re.VERBOSE)
         if column == 2:
@@ -250,7 +216,7 @@ def analyseDataGeminiWeb(prompt, data, api_key):
             model='gemini-2.0-flash',
             contents=full_promt,
             config={
-                'temperature': 0,  # Deterministic output - no randomness
+                'temperature': 0,
                 'top_p': 0.95,
                 'top_k': 40,
             }
