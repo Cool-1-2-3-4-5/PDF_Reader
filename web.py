@@ -83,9 +83,11 @@ if 'pages_confirmed' not in st.session_state:
     st.session_state['pages_confirmed'] = False
 if 'entries_confirmed' not in st.session_state:
     st.session_state['entries_confirmed'] = False
-
-with reader.open(loc) as pdf:
-    total_pages = len(pdf.pages)
+try:
+    with reader.open(loc) as pdf:
+        total_pages = len(pdf.pages)
+except:
+    raise Exception("Error in PDF")
 if st.session_state.get("keywords_valid"):
     if not st.session_state.get('pages_confirmed'):
         starting_page = st.number_input(
@@ -135,6 +137,7 @@ if st.session_state.get("keywords_valid"):
             for key in ['entries_confirmed', 'PROCESSED', 'gemini_output', 'maps_key_validated', 'starting_entrie', 'ending_entrie', 'preview_data', 'table_data', 'order_array', 'mainList', 'Data_organized', 'cached_keywords_maps']:
                 if key in st.session_state:
                     del st.session_state[key]
+            mainList = []
             st.session_state['pages_confirmed'] = False
             st.rerun()
 
@@ -167,10 +170,12 @@ if st.session_state.get("keywords_valid"):
                 for key in ['PROCESSED', 'gemini_output', 'order_array', 'mainList', 'Data_organized', 'cached_keywords_maps']:
                     if key in st.session_state:
                         del st.session_state[key]
+                mainList = []
                 st.session_state['entries_confirmed'] = False
                 st.rerun()
 
         if st.session_state.get("entries_confirmed"):
+            mainList = []
             starting_entrie = st.session_state.get('starting_entrie')
             ending_entrie = st.session_state.get('ending_entrie')
             with reader.open(loc) as pdf:
@@ -288,7 +293,7 @@ CRITICAL RULES:
 - If a field appears messy/unclear, still identify its column index (-1 ONLY if completely missing)
 """
                     gemini_output, TimedOut = analyseDataGeminiWeb(gemini_prompt, mainList[0], gemini_key)
-                    if not TimedOut:
+                    if not TimedOut and gemini_output.text != None:
                         order_array = text_cleaner(gemini_output.text)
                         st.session_state['order_array'] = order_array
                         st.session_state['cached_keywords'] = keywords
@@ -306,6 +311,9 @@ CRITICAL RULES:
                             result_parts.append("Company Website found")
                         st.write(", ".join(result_parts))
                         st.session_state['mainList'] = mainList
+                    else:
+                        st.write("Error in file processing, try again")
+                        st.session_state['PROCESSED'] = False
                 else:
                     order_array = st.session_state.get('order_array')
                     mainList = st.session_state.get('mainList')

@@ -84,7 +84,7 @@ def orderganizeData(reorderedList, rawData,maps_api):
                 company_name = str(company_info[reorderedList[0]])
             else:
                 company_name = str(company_info[0])
-        except (IndexError, TypeError):
+        except:
             company_name = "Unknown/Error"
         if company_name == "Unknown/Error": # Issue
             pass
@@ -96,7 +96,11 @@ def orderganizeData(reorderedList, rawData,maps_api):
             if company_info != main_List:
                 for column_entrie in range(len(reorderedList)):
                     if reorderedList[column_entrie] == -1 and tempList[column_entrie] == "-1": # Not in data OR not in google maps
-                        tempList[column_entrie] = search(company_name, column_entrie)
+                        verify = search(company_name, column_entrie)
+                        if verify:
+                            tempList[column_entrie] = verify
+                        else:
+                            tempList[column_entrie] = "Error"
                     elif tempList[column_entrie] == "-1" and reorderedList[column_entrie] != -1: # In data but not in google maps OR in data and in google maps
                         tempList[column_entrie] = "In Data"
                     else: # Nothing to change
@@ -113,7 +117,11 @@ def orderganizeData(reorderedList, rawData,maps_api):
             for column_entrie in range(len(reorderedList)):
                 if reorderedList[column_entrie] == -1: # Not in data OR google maps
                     # Use Company Name instead which was safely retrieved
-                    tempList[column_entrie] = search(company_name, column_entrie)
+                    verify = search(company_name, column_entrie)
+                    if verify:
+                        tempList[column_entrie] = verify
+                    else:
+                        tempList[column_entrie] = "Error"
                 else: # In data 
                     tempList[column_entrie] = "NEED TO FIND"
         finalUpdatedList.append(tempList)
@@ -149,7 +157,7 @@ def maps_search(company_name,api_key):
             return full_list, "Good"
         else:
             return [company_name], "Untrieble"
-    except Exception as e:
+    except:
         return [company_name], "Error"
 
 
@@ -165,7 +173,12 @@ def search(prompt, column):
         additional = " -site:wikipedia.org -site:facebook.com -site:instagram.com"
     else: # Nothing to change
         pass
-    result = DDGS().text((prompt + additional), region='wt-wt', backend='api', max_results=5)
+    
+    result = None
+    try:
+        result = DDGS().text((prompt + additional), region='wt-wt', backend='api', max_results=5)
+    except:
+        pass
     if result:
         phone_pattern_first_check = r"(\+?\d{1,2}\s?)?(\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4})"
         phone_pattern_second_check = re.compile(r"""
@@ -205,6 +218,8 @@ def search(prompt, column):
                 return result[0]["href"]
             else:
                 return None
+    else:
+        return None
 
 
 def analyseDataGeminiWeb(prompt, data, api_key):
@@ -222,7 +237,7 @@ def analyseDataGeminiWeb(prompt, data, api_key):
             }
         )
         return response, False
-    except Exception as exit:
+    except:
         return None, True
 
 
@@ -233,5 +248,5 @@ def text_cleaner(raw_text):
             return []
         final_array = json.loads(match.group(0))
         return final_array
-    except Exception as e:
-        return []
+    except:
+        return [-1,-1,-1,-1,-1]
