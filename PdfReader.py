@@ -222,8 +222,10 @@ def search(prompt, column):
         return None
 
 
-def analyseDataGeminiWeb(prompt, data, api_key):
-    client = genai.Client(api_key=api_key)
+def analyseDataGeminiWeb(prompt, data, api_key, client=None):
+    # Use provided client or create a new one
+    if client is None:
+        client = genai.Client(api_key=api_key)
     formatted_data = "\n".join([str(row) for row in data])
     full_promt = prompt + "\n Here is the formatted data: " + formatted_data
     try:

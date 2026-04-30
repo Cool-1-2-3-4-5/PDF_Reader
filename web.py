@@ -15,23 +15,42 @@ st.title("PDF Company Extractor")
 
 main_password = os.getenv('PASSWORD') or st.secrets.get("PASSWORD")
 st.session_state['main_password_active'] = False
+print("HI")
 def get_user_credentials():
-    gemini_key = st.text_input("Enter your Gemini API Key:", type="password")
-    if gemini_key:
-        if gemini_key == main_password:
-            gemini_key = os.getenv('GEMINI_KEY') or st.secrets.get("GEMINI_KEY")
-            global main_password_active
-            st.session_state['main_password_active'] = True
-        try:
-            client = genai.Client(api_key=gemini_key)
-            response = client.models.generate_content(
-                model='gemini-2.0-flash',
-                contents='Say hello'
-            )
-            st.write("Key is valid!")
-            st.session_state['gemini_key'] = gemini_key
-        except Exception as e:
-            st.write("Key is invalid or error occurred, Gemini integration will not work")
+    gemini_key = None
+    
+    # If key is already stored and validated, use it without re-validating
+    if st.session_state.get('gemini_key') and st.session_state.get('gemini_key_validated'):
+        gemini_key = st.session_state['gemini_key']
+        st.success("Using saved Gemini API Key")
+    else:
+        # Ask for API key
+        user_input = st.text_input("Enter your Gemini API Key:", type="password")
+        
+        if user_input:
+            # Check if it's the master password
+            if user_input == main_password:
+                gemini_key = os.getenv('GEMINI_KEY') or st.secrets.get("GEMINI_KEY")
+                st.session_state['main_password_active'] = True
+            else:
+                gemini_key = user_input
+            
+                # Validate the key
+                try:
+                    client = genai.Client(api_key=gemini_key)
+                    response = client.models.generate_content(
+                        model='gemini-2.0-flash',
+                        contents='Say hello'
+                    )
+                    st.success("Gemini API Key is valid!")
+                    st.session_state['gemini_key'] = gemini_key
+                    st.session_state['gemini_client'] = client
+                    st.session_state['gemini_key_validated'] = True
+                except Exception as e:
+                    st.error("Invalid key or API error: " + str(e))
+                    gemini_key = None
+    
+    # Handle file upload
     if not st.session_state.get('file'):
         uploaded_file = st.file_uploader("Upload your PDF file (Only 1 file)", type="pdf")
         if uploaded_file:
@@ -39,8 +58,9 @@ def get_user_credentials():
             st.rerun()
     else:
         uploaded_file = st.session_state.get('file')
-        st.write(uploaded_file.name)
-    return gemini_key, uploaded_file
+        st.write(f"Selected file: {uploaded_file.name}")
+    
+    return gemini_key, st.session_state.get('file')
    
 gemini_key, uploaded_file = get_user_credentials()
 
@@ -292,27 +312,36 @@ CRITICAL RULES:
 - Address: Contains street patterns (St, Ave, Blvd, Road, Lane, etc.) or city/state indicators
 - If a field appears messy/unclear, still identify its column index (-1 ONLY if completely missing)
 """
-                    gemini_output, TimedOut = analyseDataGeminiWeb(gemini_prompt, mainList[0], gemini_key)
-                    if not TimedOut and gemini_output.text != None:
-                        order_array = text_cleaner(gemini_output.text)
-                        st.session_state['order_array'] = order_array
-                        st.session_state['cached_keywords'] = keywords
-                        st.session_state['gemini_output'] = True
-                        result_parts = []
-                        if order_array[0] != -1:
-                            result_parts.append("Company found")
-                        if order_array[1] != -1:
-                            result_parts.append("Address found")
-                        if order_array[2] != -1:
-                            result_parts.append("Phone Number found")
-                        if order_array[3] != -1:
-                            result_parts.append("LinkedIn found")
-                        if order_array[4] != -1:
-                            result_parts.append("Company Website found")
-                        st.write(", ".join(result_parts))
-                        st.session_state['mainList'] = mainList
-                    else:
-                        st.write("Error in file processing, try again")
+                    # Pass the cached client from session state
+                    cached_client = st.session_state.get('gemini_client')
+                    try:
+                        gemini_output, TimedOut = analyseDataGeminiWeb(gemini_prompt, mainList[0], gemini_key, cached_client)
+                        if TimedOut:
+                            st.error("Gemini API request timed out. Try again.")
+                            st.session_state['PROCESSED'] = False
+                        elif gemini_output is None or gemini_output.text is None:
+                            st.error("No response from Gemini API")
+                            st.session_state['PROCESSED'] = False
+                        else:
+                            order_array = text_cleaner(gemini_output.text)
+                            st.session_state['order_array'] = order_array
+                            st.session_state['cached_keywords'] = keywords
+                            st.session_state['gemini_output'] = True
+                            result_parts = []
+                            if order_array[0] != -1:
+                                result_parts.append("Company found")
+                            if order_array[1] != -1:
+                                result_parts.append("Address found")
+                            if order_array[2] != -1:
+                                result_parts.append("Phone Number found")
+                            if order_array[3] != -1:
+                                result_parts.append("LinkedIn found")
+                            if order_array[4] != -1:
+                                result_parts.append("Company Website found")
+                            st.write(", ".join(result_parts))
+                            st.session_state['mainList'] = mainList
+                    except Exception as e:
+                        st.error("Error processing data: " + str(e))
                         st.session_state['PROCESSED'] = False
                 else:
                     order_array = st.session_state.get('order_array')
