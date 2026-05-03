@@ -1,9 +1,8 @@
-﻿from google import genai
+﻿import google.genai as genai
 import pdfplumber as reader
 import os
 import googlemaps
 import re
-import os
 import json
 from dotenv import load_dotenv
 from ddgs import DDGS
@@ -222,15 +221,16 @@ def search(prompt, column):
         return None
 
 
-def analyseDataGeminiWeb(prompt, data, api_key, client=None):
-    # Use provided client or create a new one
-    if client is None:
-        client = genai.Client(api_key=api_key)
-    formatted_data = "\n".join([str(row) for row in data])
-    full_promt = prompt + "\n Here is the formatted data: " + formatted_data
+def analyseDataGeminiWeb(prompt, data, api_key=None):
+    # Use Google Generative AI API
     try:
+        # Create client with the API key
+        client = genai.Client(api_key=api_key)
+        formatted_data = "\n".join([str(row) for row in data])
+        full_promt = prompt + "\n Here is the formatted data: " + formatted_data
+        
         response = client.models.generate_content(
-            model='gemini-2.0-flash',
+            model="gemini-2.0-flash",
             contents=full_promt,
             config={
                 'temperature': 0,
@@ -238,8 +238,10 @@ def analyseDataGeminiWeb(prompt, data, api_key, client=None):
                 'top_k': 40,
             }
         )
+        print(f"[DEBUG] Gemini API response received: {response.text[:100]}")
         return response, False
-    except:
+    except Exception as e:
+        print(f"[DEBUG] Gemini API error: {str(e)}")
         return None, True
 
 

@@ -5,74 +5,88 @@ import json
 import re
 import os
 import pandas as framework
-from google import genai
+import google.genai as genai
 from dotenv import load_dotenv
 from PdfReader import orderganizeData, search, analyseDataGeminiWeb, text_cleaner, extract_table_robust
 
 load_dotenv()
 
+# 1. SETUP AUTHENTICATION
+ADMIN_PASSWORD = st.secrets.get("ADMIN_PASSWORD") or os.getenv("ADMIN_PASSWORD")
+COMPANY_API_KEY = st.secrets.get("GEMINI_KEY") or os.getenv("GEMINI_KEY")
+
 st.title("PDF Company Extractor")
 
-main_password = os.getenv('PASSWORD') or st.secrets.get("PASSWORD")
-st.session_state['main_password_active'] = False
-print("HI")
 def get_user_credentials():
-    gemini_key = None
+    # Initialize session state
+    if 'auth_verified' not in st.session_state:
+        st.session_state['auth_verified'] = False
+        st.session_state['is_admin'] = False
     
-    # If key is already stored and validated, use it without re-validating
-    if st.session_state.get('gemini_key') and st.session_state.get('gemini_key_validated'):
-        gemini_key = st.session_state['gemini_key']
-        st.success("Using saved Gemini API Key")
-    else:
-        # Ask for API key
-        user_input = st.text_input("Enter your Gemini API Key:", type="password")
+    # Show success if already authenticated
+    if st.session_state['auth_verified']:
+        if st.session_state['is_admin']:
+            st.success("Admin credentials verified")
+        else:
+            st.success("Gemini API key accepted")
+    
+    # Ask for input only if not authenticated
+    if not st.session_state['auth_verified']:
+        gemini_input = st.text_input("Enter admin password or Gemini API key:", type="password")
         
-        if user_input:
-            # Check if it's the master password
-            if user_input == main_password:
-                gemini_key = os.getenv('GEMINI_KEY') or st.secrets.get("GEMINI_KEY")
-                st.session_state['main_password_active'] = True
+        if gemini_input:
+            # Check if it matches admin password
+            if gemini_input == ADMIN_PASSWORD:
+                # Path 1: Admin - use company credentials from .env
+                user_api_key = COMPANY_API_KEY
+                is_admin = True
             else:
-                gemini_key = user_input
+                # Path 2: User - use their API key
+                user_api_key = gemini_input
+                is_admin = False
             
-                # Validate the key
-                try:
-                    client = genai.Client(api_key=gemini_key)
-                    response = client.models.generate_content(
-                        model='gemini-2.0-flash',
-                        contents='Say hello'
-                    )
-                    st.success("Gemini API Key is valid!")
-                    st.session_state['gemini_key'] = gemini_key
-                    st.session_state['gemini_client'] = client
-                    st.session_state['gemini_key_validated'] = True
-                except Exception as e:
-                    st.error("Invalid key or API error: " + str(e))
-                    gemini_key = None
+            # Test Gemini API initialization
+            try:
+                client = genai.Client(api_key=user_api_key)
+                response = client.models.generate_content(model="gemini-2.0-flash", contents="test")
+                
+                # Success - save to session state
+                st.session_state['auth_verified'] = True
+                st.session_state['is_admin'] = is_admin
+                st.session_state['api_key'] = user_api_key
+                st.rerun()
+            except Exception as e:
+                st.error(f"Gemini API initialization failed: {str(e)}")
+                return False, None
     
-    # Handle file upload
-    if not st.session_state.get('file'):
-        uploaded_file = st.file_uploader("Upload your PDF file (Only 1 file)", type="pdf")
-        if uploaded_file:
-            st.session_state['file'] = uploaded_file
-            st.rerun()
-    else:
-        uploaded_file = st.session_state.get('file')
-        st.write(f"Selected file: {uploaded_file.name}")
+    # If authenticated, handle file upload
+    if st.session_state['auth_verified']:
+        if not st.session_state.get('file'):
+            uploaded_file = st.file_uploader("Upload your PDF file (Only 1 file)", type="pdf")
+            if uploaded_file:
+                st.session_state['file'] = uploaded_file
+                st.rerun()
+        else:
+            uploaded_file = st.session_state.get('file')
+            st.write(f"Selected file: {uploaded_file.name}")
+        
+        return True, st.session_state.get('file')
     
-    return gemini_key, st.session_state.get('file')
+    return False, None
    
 gemini_key, uploaded_file = get_user_credentials()
 
 if st.session_state.get('file'):
     if st.button("Change file"):
+        print("[DEBUG] Change file button clicked")
         for key in ['file', 'keywords', 'keywords_valid', 'PROCESSED','entries_confirmed','starting_page','ending_page','pages_confirmed','starting_entrie', 'ending_entrie', 'preview_data', 'table_data', 'order_array', 'mainList', 'Data_organized', 'cached_keywords_maps', 'gemini_output', 'maps_key_validated']:
             if key in st.session_state:
                 del st.session_state[key]
+        print("[DEBUG] Cleared session state, rerunning...")
         st.rerun()
 
 if not gemini_key:
-    st.warning("Please enter your Gemini API Key")
+    st.warning("Please enter Gemini API Key")
     st.stop()
 
 if not uploaded_file:
@@ -91,10 +105,12 @@ if not st.session_state.get('keywords'):
 else:
     st.write("You have selcted: " + str(st.session_state.get('keywords')))
     if st.button("Change keywords"):
+        print("[DEBUG] Change keywords button clicked")
         for key in ['keywords_valid','pages_confirmed','entries_confirmed', 'PROCESSED','gemini_output','maps_key_validated','starting_entrie', 'ending_entrie', 'preview_data', 'table_data', 'order_array', 'mainList', 'Data_organized', 'cached_keywords_maps', 'cached_keywords']:
             if key in st.session_state:
                 del st.session_state[key]
         st.session_state['keywords'] = 0
+        print("[DEBUG] Cleared keywords session state, rerunning...")
         st.rerun()
 
 mainList = []
@@ -125,6 +141,7 @@ if st.session_state.get("keywords_valid"):
             step=1,
         )
         if st.button("OK Pages"):
+            print(f"[DEBUG] OK Pages button clicked: {starting_page} to {ending_page}")
             if ending_page != 0 and ending_page < starting_page:
                 st.write("Invalid. Starting page must be less than or equal to ending page")
             else:
@@ -135,6 +152,7 @@ if st.session_state.get("keywords_valid"):
                 st.session_state['starting_page'] = int(starting_page)
                 st.session_state['ending_page'] = int(effective_ending_page)
                 st.session_state['pages_confirmed'] = True
+                print(f"[DEBUG] Pages confirmed: {starting_page} to {effective_ending_page}")
                 st.session_state['entries_confirmed'] = False
                 with reader.open(loc) as pdf:
                     page_obj = pdf.pages[int(starting_page) - 1]
@@ -154,11 +172,13 @@ if st.session_state.get("keywords_valid"):
     else:
         st.write("Starting Page: " + str(st.session_state.get('starting_page')) + " Ending Page: " + str(st.session_state.get('ending_page')))
         if st.button("Change Pages"):
+            print("[DEBUG] Change Pages button clicked")
             for key in ['entries_confirmed', 'PROCESSED', 'gemini_output', 'maps_key_validated', 'starting_entrie', 'ending_entrie', 'preview_data', 'table_data', 'order_array', 'mainList', 'Data_organized', 'cached_keywords_maps']:
                 if key in st.session_state:
                     del st.session_state[key]
             mainList = []
             st.session_state['pages_confirmed'] = False
+            print("[DEBUG] Cleared pages session state, rerunning...")
             st.rerun()
 
 
@@ -175,6 +195,7 @@ if st.session_state.get("keywords_valid"):
             ending_entrie = st.number_input("Based on this preview, which entrie would you like to end with. For the last entrie, enter 0. Enter same first entrie number to only work on one entrie", min_value=0, value=0)
 
             if st.button("OK Entries"):
+                print(f"[DEBUG] OK Entries button clicked: {starting_entrie} to {ending_entrie}")
                 if ending_entrie != 0 and ending_entrie < starting_entrie:
                     st.write("Invalid. Starting number must be less than ending number and ending number must fit between domain of data")
                 elif ending_entrie > len(st.session_state.get('table_data', [])):
@@ -183,15 +204,18 @@ if st.session_state.get("keywords_valid"):
                     st.session_state['starting_entrie'] = int(starting_entrie)
                     st.session_state['ending_entrie'] = int(ending_entrie)
                     st.session_state['entries_confirmed'] = True
+                    print(f"[DEBUG] Entries confirmed: {starting_entrie} to {ending_entrie}")
                 st.rerun()
         else:
             st.write("Starting Entry: " + str(st.session_state.get('starting_entrie')) + " Ending Entry: " + str(st.session_state.get('ending_entrie')))
             if st.button("Change Entries"):
+                print("[DEBUG] Change Entries button clicked")
                 for key in ['PROCESSED', 'gemini_output', 'order_array', 'mainList', 'Data_organized', 'cached_keywords_maps']:
                     if key in st.session_state:
                         del st.session_state[key]
                 mainList = []
                 st.session_state['entries_confirmed'] = False
+                print("[DEBUG] Cleared entries session state, rerunning...")
                 st.rerun()
 
         if st.session_state.get("entries_confirmed"):
@@ -223,6 +247,7 @@ if st.session_state.get("keywords_valid"):
             st.info("Number of Companies: " + str(len(mainList)) + " | Maps API calls: " + str(2*api_calls) + " | Estimated cost: " + str(estimated_cost))
             
         if st.session_state.get('entries_confirmed') and (st.button("Process Companies") or "PROCESSED" in st.session_state):
+            print("[DEBUG] Process Companies button clicked or PROCESSED in session_state")
             st.session_state['PROCESSED'] = True
             mainList = []
             starting_entrie = st.session_state.get('starting_entrie')
@@ -312,10 +337,10 @@ CRITICAL RULES:
 - Address: Contains street patterns (St, Ave, Blvd, Road, Lane, etc.) or city/state indicators
 - If a field appears messy/unclear, still identify its column index (-1 ONLY if completely missing)
 """
-                    # Pass the cached client from session state
-                    cached_client = st.session_state.get('gemini_client')
                     try:
-                        gemini_output, TimedOut = analyseDataGeminiWeb(gemini_prompt, mainList[0], gemini_key, cached_client)
+                        print("[DEBUG] Calling Gemini API...")
+                        gemini_output, TimedOut = analyseDataGeminiWeb(gemini_prompt, mainList[0], api_key=st.session_state.get('api_key'))
+                        print("[DEBUG] Gemini API response: TimedOut= " + str(TimedOut))
                         if TimedOut:
                             st.error("Gemini API request timed out. Try again.")
                             st.session_state['PROCESSED'] = False
@@ -355,7 +380,7 @@ CRITICAL RULES:
             mainList = st.session_state.get('mainList')
             keywords = st.session_state.get('cached_keywords', "")
             
-            if not st.session_state['main_password_active']: # not DSQ
+            if not st.session_state.get('is_admin'): # not admin
                 password_for_maps = st.text_input("MAPS API Please:", type="password")
                 if password_for_maps:
                     if 'maps_key_validated' not in st.session_state or st.session_state.get('cached_keywords_maps') != keywords:
