@@ -1,0 +1,277 @@
+[33mcommit d9cc0b619cbf61ae4ef274e937423351be59a64a[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Sun May 3 14:23:05 2026 -0400
+
+    issue resolving
+
+[33mcommit 554ac5a306ef51f5ac160675e7bd3689a59f8cc6[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Sun May 3 14:22:30 2026 -0400
+
+    f
+
+[33mcommit 0febb4338dbee2c3bfcc49c5c76b7799db9224c0[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Sun May 3 14:20:43 2026 -0400
+
+    issue with gitingore fixed
+
+[33mcommit 5a758db32d100c483fd8eb5d810c77ae10f78683[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Sun May 3 14:18:52 2026 -0400
+
+    Stop tracking .env file
+
+[33mcommit cbbf4800b932045498792769ca1e16c835c2ecb6[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Sun May 3 14:16:51 2026 -0400
+
+    gemini fixed
+    
+    Co-authored-by: Copilot <copilot@github.com>
+
+[33mcommit 3506d52e7627464b49e68496c2fe1efb0760cd24[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Wed Apr 29 21:00:37 2026 -0400
+
+    issues
+    
+    Co-authored-by: Copilot <copilot@github.com>
+
+[33mcommit 961300d6d614cb8c2cf03570aa78db626fda83ff[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Sat Apr 25 22:00:21 2026 -0400
+
+    final integrsation and exception
+    
+    Co-authored-by: Copilot <copilot@github.com>
+
+[33mcommit f49adf3bc8864300d5bb498ff91d72ea45e3a1fc[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Thu Apr 23 16:46:52 2026 -0400
+
+    final touches
+
+[33mcommit abc862dbda305ae56f3536159e3ed92fca4ecb58[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Sun Apr 19 15:25:24 2026 -0400
+
+    regress syntax
+
+[33mcommit d5900f37cb98cacee73434e32ee72fdbf827b167[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Sun Apr 19 15:19:45 2026 -0400
+
+    saveing
+
+[33mcommit fa04cb7a08ad20d30e6a2aa45c37071aaa398945[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Sun Apr 19 15:19:36 2026 -0400
+
+    final edit with sessions state and flow
+
+[33mcommit 57b012ca6ac8c4df0cbf7bf11cf5c453b6385285[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Sat Apr 18 20:01:58 2026 -0400
+
+    new list
+
+[33mcommit 5660cc0437bfacdda03ac55ea38d12bfd248ecd9[m
+Merge: 9da0835 df4c347
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Fri Apr 17 12:11:54 2026 -0400
+
+    Merge branch 'main' of https://github.com/Cool-1-2-3-4-5/PDF_Reader
+
+[33mcommit 9da0835ad5f4c48cf21c4245bdd2b98b2d3d1f18[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Fri Apr 17 12:11:51 2026 -0400
+
+    pdf scparer
+
+[33mcommit df4c3478cb365b6bf39f8a4b9b1938e9804e2461[m
+Author: Elil Thirumugam <126423230+Cool-1-2-3-4-5@users.noreply.github.com>
+Date:   Fri Apr 17 11:03:35 2026 -0400
+
+    Added Dev Container Folder
+
+[33mcommit f5b205402a14fe6dca06571b23b3a0d1a25f04a9[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Thu Apr 16 21:32:46 2026 -0400
+
+    deterministic
+
+[33mcommit d9baf0b09401f5c4d4a0e17ca1c8435ca4224ae7[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Wed Mar 25 18:37:21 2026 -0400
+
+    updated page selection
+
+[33mcommit 6ecf4c82a3771bcca69d46740cab847f4d74224c[m
+Merge: ae0295f a95c53b
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Wed Mar 25 08:33:10 2026 -0400
+
+    Merge branch 'main' of https://github.com/Cool-1-2-3-4-5/PDF_Reader
+
+[33mcommit ae0295f5af2306f7c63308021880b04b4c974c9f[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Wed Mar 25 08:33:05 2026 -0400
+
+    removed mongo db addition and json addition
+
+[33mcommit a95c53bb5e6cd0e4e4a83053bd3da41eb964e8fa[m
+Author: Elil Thirumugam <126423230+Cool-1-2-3-4-5@users.noreply.github.com>
+Date:   Wed Mar 25 08:23:31 2026 -0400
+
+    Added Dev Container Folder
+
+[33mcommit 9197c5009c5cc3d3ee785980922e488857e27d33[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Wed Mar 25 07:00:13 2026 -0400
+
+    removed json passing
+
+[33mcommit ce341794d8c0aab1ad432a3def0009cbb64d6a4a[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Sun Mar 15 21:17:22 2026 -0400
+
+    logs change
+
+[33mcommit 45120d034f1f6a7005f27285b9c5e5f5c84ea2b1[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Sun Mar 15 19:06:08 2026 -0400
+
+    logs
+
+[33mcommit 34d2f64e2f4ecfb01678acd185460de99090b658[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Sun Mar 15 18:54:49 2026 -0400
+
+    updated passwords to work on streamlit
+
+[33mcommit 3156a5cfbb87dad81b94513dec359f616b18b0fc[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Sun Mar 15 18:51:48 2026 -0400
+
+    updates to .txt
+
+[33mcommit c8a89203a3d37f51e4bf0cc1c0a55b4aeebed923[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Sun Mar 15 18:49:33 2026 -0400
+
+    requirements.txt updates
+
+[33mcommit f0f1a66522cabb0070f9fb464213aaaf81a7ff1e[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Sun Mar 15 18:43:31 2026 -0400
+
+    requirments.txt added
+
+[33mcommit 3c488cef6d2c163fd61bd7dfdfe4c7f05df26652[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Sun Mar 15 12:00:41 2026 -0400
+
+    Json file updating patched
+
+[33mcommit 6e9d2b1465f7b5dbdae3b8f49bcfa6563e1d6df8[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Sun Mar 15 11:53:34 2026 -0400
+
+    Removed one time guards to omit the need to refresh page
+
+[33mcommit 72f8d3240c8bb4e3963d1901c6e5152087a1501c[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Mon Mar 9 21:13:26 2026 -0400
+
+    file drag and drop
+
+[33mcommit 16e4a216f5370dd940f3d0b01204ba78d24c6fa2[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Sun Mar 8 13:49:13 2026 -0400
+
+    replace Plus sign to allow phone number to copy and paste
+
+[33mcommit 3a82e479576a39418df7aef593d8b0d2b52454f5[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Sun Mar 8 11:58:24 2026 -0400
+
+    Session state bug fixed
+
+[33mcommit 24f19aabce8ef947f33a42b65dde64206f018375[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Sat Feb 28 22:35:20 2026 -0500
+
+    if guards added to reduce time
+
+[33mcommit c9fa25a2e044139077d7ee444a662a7af584da09[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Sat Feb 28 10:04:07 2026 -0500
+
+    saved
+
+[33mcommit bc2e4d3b6cab8e3e45923b37f04cf9dec875c122[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Sat Feb 28 10:03:09 2026 -0500
+
+    Alt to DDGS when key incorrect
+
+[33mcommit 1cccf07f4cc4e30ec235110df7042df155ba1ce5[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Wed Feb 25 21:34:23 2026 -0500
+
+    Maps API One call condition
+
+[33mcommit 7d85bfd92c32028d79f51a479f55e6e85b85d37f[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Sun Feb 22 15:29:15 2026 -0500
+
+    Maps api added
+
+[33mcommit d47dc0d330e16605877722665bcfeddcce9079ba[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Sun Feb 22 11:00:28 2026 -0500
+
+    Pandas
+
+[33mcommit 7727706d5617bcd663460c91f2299a2ea63e7a23[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Sat Feb 21 18:31:54 2026 -0500
+
+    maps api
+
+[33mcommit 8cc8ed1847a74f7cba391edc39c7d252b4d20f28[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Tue Feb 17 18:49:41 2026 -0500
+
+    Timout
+
+[33mcommit 2be2f45e77fd144490e891a45fb789869c4c2206[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Mon Feb 16 13:30:51 2026 -0500
+
+    Stop tracking data.json
+
+[33mcommit 123f169ca4567b5103ad16f42c6d78751ea9ca55[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Mon Feb 16 13:28:39 2026 -0500
+
+    front end creation
+
+[33mcommit 60e3fb34d5bbaad0eaa361a60bdbc96ade9b5447[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Fri Feb 13 19:42:03 2026 -0500
+
+    added site lookups
+
+[33mcommit caa7c9c70fb40742daa0e3ebbdd64501928231da[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Wed Feb 11 21:04:42 2026 -0500
+
+    User based focus
+
+[33mcommit fa069481a8abf6bb38e885a83bb7eecab659d5f1[m
+Author: Elil Thirumugam <elilgrade8@gmail.com>
+Date:   Wed Feb 11 20:27:05 2026 -0500
+
+    Initial_commit
